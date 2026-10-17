@@ -143,8 +143,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\create_desktop_shortcut.ps1
 
 ### ⚙️ ဖောင့်နှင့် အပြင်အဆင် (Settings)
 * အပေါ်ညာဘက်ရှိ **`⚙️ ဖောင့်/အပြင်အဆင်`** ကို နှိပ်၍:
-  - Font Size (12px - 22px), Line Height, Color Theme များကို စိတ်ကြိုက် ညှိနိုင်ပါသည်။
-  - မိမိပိုင် `Gemini API Key` သို့မဟုတ် `DeepSeek API Key` ထည့်သွင်းထားနိုင်ပါသည်။
+  - Font Size (12px - 22px), Line Height, Color Theme (GitHub Dark / Cyberpunk Neon / Monokai Pro / Solarized Dark) များကို စိတ်ကြိုက် ညှိနိုင်ပါသည်။
+  - မိမိပိုင် `Gemini API Key` သို့မဟုတ် `DeepSeek API Key` ထည့်သွင်းထားနိုင်ပါသည်။ Key များကို ဤ Project Folder ပြင်ပ (`%USERPROFILE%\.config\myanmar-opencode-terminal`) တွင် သိမ်းဆည်းထားပြီး မျက်နှာပြင်တွင် နောက်ဆုံးစာလုံး (၄) လုံးသာ ပြသပါသည်။ သိမ်းထားသော Key များကို ဖျက်လိုပါက **`🗑️ သိမ်းထားသော Key ဖျက်မည်`** ကို နှိပ်ပါ။
 
 ---
 

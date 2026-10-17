@@ -229,9 +229,7 @@ app.post('/api/browse-folder', (req, res) => {
     '-ExecutionPolicy', 'Bypass',
     '-File', scriptPath,
     '-InitialPath', initial
-  ], {
-    windowsHide: true
-  });
+  ]);
 
   let stdoutData = '';
   let stderrData = '';
@@ -244,7 +242,14 @@ app.post('/api/browse-folder', (req, res) => {
     stderrData += d.toString();
   });
 
+  // Safety timeout: 2 minutes
+  const timer = setTimeout(() => {
+    try { child.kill(); } catch (e) {}
+    isBrowsingFolder = false;
+  }, 120000);
+
   child.on('close', (code) => {
+    clearTimeout(timer);
     isBrowsingFolder = false;
     const selected = stdoutData.trim();
     if (selected && fs.existsSync(selected) && fs.statSync(selected).isDirectory()) {
@@ -265,6 +270,7 @@ app.post('/api/browse-folder', (req, res) => {
   });
 
   child.on('error', (err) => {
+    clearTimeout(timer);
     isBrowsingFolder = false;
     return res.status(500).json({ error: err.message });
   });

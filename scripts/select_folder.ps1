@@ -4,34 +4,37 @@ param(
 
 try {
     Add-Type -AssemblyName System.Windows.Forms
-    Add-Type -AssemblyName System.Drawing
 
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dialog.Description = "OpenCode အသုံးပြုလိုသည့် Project Folder ကို ရွေးချယ်ပါ"
+    $dialog.Description = "OpenCode Project Folder ကို ရွေးချယ်ပါ"
     $dialog.ShowNewFolderButton = $true
 
-    if ($InitialPath -and (Test-Path $InitialPath)) {
+    if ($InitialPath -and (Test-Path -LiteralPath $InitialPath)) {
         $dialog.SelectedPath = $InitialPath
     }
 
-    # Invisible topmost owner form to bring dialog to front
+    # Clean topmost anchor form so dialog pops in front of Edge/browser
     $form = New-Object System.Windows.Forms.Form
     $form.TopMost = $true
     $form.ShowInTaskbar = $false
-    $form.Size = New-Object System.Drawing.Size(0,0)
+    $form.Width = 1
+    $form.Height = 1
+    $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
-    $form.Opacity = 0
     $form.Show()
     $form.BringToFront()
 
     $result = $dialog.ShowDialog($form)
+    $form.Close()
     $form.Dispose()
 
     if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        Write-Output $dialog.SelectedPath
+        [Console]::WriteLine($dialog.SelectedPath)
     }
 } catch {
-    # If any error, exit quietly
+    # Report the failure on stderr so /api/browse-folder can surface it instead of
+    # treating it as a user cancel (see the `code !== 0 && stderrData` branch).
+    [Console]::Error.WriteLine($_.Exception.Message)
     exit 1
 }

@@ -21,6 +21,11 @@
     /\u107e\u1031/, // yapint + e
     /\u1031\u103a/, // e + asat
     /\u103b\u103a/, // yayit + asat
+    // A medial typed *before* its consonant (ျမန္မာ / ျပီး). In Unicode a medial
+    // always follows a consonant, so only flag it when nothing consonant-like
+    // precedes it — otherwise valid Unicode like ကျပ် (က + ျ + ပ) would match.
+    /(^|[^\u1000-\u1021\u103b\u103c])\u103b[\u1000-\u1021]/,
+    /(^|[^\u1000-\u1021\u103b\u103c])\u103c[\u1000-\u1021]/,
     /\u1064/, // double asat in zg
     /\u1088/, // u below in zg
     /\u1089/, // u below in zg
@@ -68,7 +73,9 @@
 
   // Regex replacement rules for Zawgyi to Unicode
   const zg2uniRules = [
-    // Kinzi
+    // Kinzi: Zawgyi stores U+1064 *after* the consonant it sits on
+    // (မဂၤလာပါ -> မင်္ဂလာပါ), so move it in front of that consonant.
+    { from: /([\u1000-\u1021])\u1064/g, to: '\u1004\u103a\u1039$1' },
     { from: /\u1064/g, to: '\u1004\u103a\u1039' },
     // Stacked consonants in Zawgyi private area
     { from: /\u1060/g, to: '\u1039\u1000' },

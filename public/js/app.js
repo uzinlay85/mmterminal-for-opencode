@@ -593,12 +593,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ws && isWsConnected) {
           ws.send(JSON.stringify({ type: 'restart', shell: shellSelect.value, cwd: data.cwd }));
         }
-      } else if (data.canceled) {
-        // User closed or canceled
       } else if (data.busy) {
         showToast('⚠️ ဖိုဒါရွေးချယ်သည့် Window ပွင့်နေဆဲဖြစ်ပါသည်');
       } else if (data.error) {
+        // The picker failed (and reported why) — surface it instead of silently
+        // treating it as a user cancel.
         alert('Folder ရွေးချယ်မှု အဆင်မပြေပါ: ' + data.error);
+      } else if (data.canceled) {
+        // User closed or canceled the dialog — stay quiet.
       }
     })
     .catch(err => {
