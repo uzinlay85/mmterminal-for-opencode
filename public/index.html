@@ -142,6 +142,7 @@
         <div class="composer-bottom-bar notranslate">
           <div class="bottom-left-tools notranslate">
             <span id="char-counter" class="notranslate">0 စာလုံး</span>
+            <span id="zawgyi-badge" class="tool-chip notranslate" style="display: none; color: #e3b341; cursor: pointer;" title="Zawgyi စာသားဖြစ်နေသည် — နှိပ်၍ Unicode သို့ ပြောင်းပါ">⚠️ Zawgyi ဖြစ်နေသည် — နှိပ်၍ ပြင်မည်</span>
             <span style="color: var(--border-color);">|</span>
             <button id="btn-fix-zawgyi" class="tool-chip notranslate" title="Zawgyi စာသားကို Unicode အဖြစ် အလိုအလျောက် ပြောင်းပေးမည်">
               <span>🔄 Zawgyi ပြင်မည်</span>
@@ -341,10 +342,13 @@
           <input type="password" id="setting-deepseek-key" class="setting-input notranslate" style="width: 220px;" placeholder="sk-...">
         </div>
         <p style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
-          💡 OpenCode တွင် အခမဲ့ သုံးလိုပါက Web UI အောက်ခြေ Model နေရာတွင် <b>Free</b> ဟု ပါသော Model (ဥပမာ <code>DeepSeek V4.1 Flash Free</code>) ကို ရွေးချယ်ပေးပါ။
+          💡 ဤ Key များကို OpenCode CLI သို့ environment variable အဖြစ် ပို့ပေးသည့်အတွက် မိမိပိုင် Key ဖြင့် အသုံးပြုနိုင်ပါသည်။ OpenCode တွင် အခမဲ့ သုံးလိုပါက Web UI အောက်ခြေ Model နေရာတွင် <b>Free</b> ဟု ပါသော Model (ဥပမာ <code>DeepSeek V4.1 Flash Free</code>) ကို ရွေးချယ်ပေးပါ။ သိမ်းဆည်းပြီးသား Key ကို ဖျက်လိုပါက အောက်ပါ ခလုတ်ကို နှိပ်ပါ။
         </p>
 
-        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+          <button id="btn-clear-api-keys" class="action-btn notranslate" style="color: #f85149;">
+            <span>🗑️ သိမ်းထားသော Key ဖျက်မည်</span>
+          </button>
           <button id="btn-save-settings" class="action-btn btn-primary notranslate">သိမ်းဆည်းမည်</button>
         </div>
       </div>

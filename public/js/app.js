@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyPromptBtn = document.getElementById('btn-copy-prompt');
   const fixZawgyiBtn = document.getElementById('btn-fix-zawgyi');
   const charCounter = document.getElementById('char-counter');
+  const zawgyiBadge = document.getElementById('zawgyi-badge');
   const promptTemplates = document.getElementById('prompt-templates');
   const enterToSendCheck = document.getElementById('enter-to-send');
   const startOpenCodeBtn = document.getElementById('btn-start-opencode');
@@ -67,12 +68,53 @@ document.addEventListener('DOMContentLoaded', () => {
   let fitAddon = null;
   let ws = null;
   let isWsConnected = false;
+  let reconnectDelay = 2000;
   let activeTab = 'terminal';
   let webServerUrl = null;
   let promptHistory = JSON.parse(localStorage.getItem('mm_opencode_history') || '[]');
 
   // Monospace font MUST be first so xterm calculates standard character cell width!
   const defaultTermFont = "'Cascadia Code', 'Consolas', 'Pyidaungsu', 'Myanmar Text', 'Noto Sans Myanmar', monospace";
+
+  // xterm palettes for the "Color Theme" setting. Keep them in sync with the
+  // <option> values in index.html’s #setting-theme select.
+  const TERMINAL_THEMES = {
+    dark: {
+      background: '#0d1117', foreground: '#f0f6fc', cursor: '#58a6ff', cursorAccent: '#0d1117',
+      selectionBackground: 'rgba(56, 139, 253, 0.35)',
+      black: '#484f58', red: '#ff7b72', green: '#3fb950', yellow: '#d29922',
+      blue: '#58a6ff', magenta: '#bc8cff', cyan: '#39c5cf', white: '#b1bac4',
+      brightBlack: '#6e7681', brightRed: '#ffa198', brightGreen: '#56d364', brightYellow: '#e3b341',
+      brightBlue: '#79c0ff', brightMagenta: '#d2a8ff', brightCyan: '#56d4dd', brightWhite: '#f0f6fc'
+    },
+    cyberpunk: {
+      background: '#0b0016', foreground: '#e6f1ff', cursor: '#ff2bd6', cursorAccent: '#0b0016',
+      selectionBackground: 'rgba(255, 43, 214, 0.35)',
+      black: '#1a0b2e', red: '#ff2e88', green: '#39ff14', yellow: '#ffe600',
+      blue: '#00e5ff', magenta: '#ff2bd6', cyan: '#00fff7', white: '#e6f1ff',
+      brightBlack: '#4b2e83', brightRed: '#ff6ba6', brightGreen: '#7dff5c', brightYellow: '#fff45c',
+      brightBlue: '#5cf0ff', brightMagenta: '#ff6be6', brightCyan: '#7cfffb', brightWhite: '#ffffff'
+    },
+    monokai: {
+      background: '#272822', foreground: '#f8f8f2', cursor: '#f8f8f0', cursorAccent: '#272822',
+      selectionBackground: 'rgba(73, 72, 62, 0.8)',
+      black: '#272822', red: '#f92672', green: '#a6e22e', yellow: '#f4bf75',
+      blue: '#66d9ef', magenta: '#ae81ff', cyan: '#a1efe4', white: '#f8f8f2',
+      brightBlack: '#75715e', brightRed: '#f92672', brightGreen: '#a6e22e', brightYellow: '#f4bf75',
+      brightBlue: '#66d9ef', brightMagenta: '#ae81ff', brightCyan: '#a1efe4', brightWhite: '#f9f8f5'
+    },
+    solarized: {
+      background: '#002b36', foreground: '#839496', cursor: '#93a1a1', cursorAccent: '#002b36',
+      selectionBackground: 'rgba(88, 110, 117, 0.5)',
+      black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900',
+      blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#eee8d5',
+      brightBlack: '#586e75', brightRed: '#cb4b16', brightGreen: '#586e75', brightYellow: '#657b83',
+      brightBlue: '#839496', brightMagenta: '#6c71c4', brightCyan: '#93a1a1', brightWhite: '#fdf6e3'
+    }
+  };
+  function themeFor(name) {
+    return TERMINAL_THEMES[name] || TERMINAL_THEMES.dark;
+  }
   let parsedSettings = {};
   try {
     parsedSettings = JSON.parse(localStorage.getItem('mm_opencode_settings') || '{}');
@@ -86,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const userSettings = Object.assign({
     fontFamily: defaultTermFont,
     fontSize: 15,
-    lineHeight: 1.25,
+    lineHeight: 1.45,
     theme: 'dark'
   }, parsedSettings);
 
@@ -105,31 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
       cursorBlink: true,
       fontFamily: userSettings.fontFamily,
       fontSize: parseInt(userSettings.fontSize, 10),
-      lineHeight: parseFloat(userSettings.lineHeight) || 1.25,
+      lineHeight: parseFloat(userSettings.lineHeight) || 1.45,
       letterSpacing: 0,
-      theme: {
-        background: '#0d1117',
-        foreground: '#f0f6fc',
-        cursor: '#58a6ff',
-        cursorAccent: '#0d1117',
-        selectionBackground: 'rgba(56, 139, 253, 0.35)',
-        black: '#484f58',
-        red: '#ff7b72',
-        green: '#3fb950',
-        yellow: '#d29922',
-        blue: '#58a6ff',
-        magenta: '#bc8cff',
-        cyan: '#39c5cf',
-        white: '#b1bac4',
-        brightBlack: '#6e7681',
-        brightRed: '#ffa198',
-        brightGreen: '#56d364',
-        brightYellow: '#e3b341',
-        brightBlue: '#79c0ff',
-        brightMagenta: '#d2a8ff',
-        brightCyan: '#56d4dd',
-        brightWhite: '#f0f6fc'
-      },
+      theme: themeFor(userSettings.theme),
       convertEol: true,
       allowProposedApi: true
     });
@@ -169,6 +189,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Update the header connection indicator.
+  function setConnectionStatus(color) {
+    const dot = document.querySelector('#opencode-status .status-dot');
+    if (dot) {
+      dot.style.backgroundColor = color;
+      dot.style.boxShadow = `0 0 6px ${color}`;
+    }
+  }
+
   // Connect WebSocket
   function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -178,8 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ws.onopen = () => {
       isWsConnected = true;
-      document.querySelector('.status-dot').style.backgroundColor = '#238636';
-      document.querySelector('.status-dot').style.boxShadow = '0 0 6px #238636';
+      reconnectDelay = 2000;
+      setConnectionStatus('#238636');
 
       const cols = term.cols || 80;
       const rows = term.rows || 24;
@@ -211,9 +240,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ws.onclose = () => {
       isWsConnected = false;
-      document.querySelector('.status-dot').style.backgroundColor = '#d29922';
-      document.querySelector('.status-dot').style.boxShadow = '0 0 6px #d29922';
-      setTimeout(connectWebSocket, 2000);
+      setConnectionStatus('#d29922');
+      // Exponential backoff so a dead server is not hammered on reconnect.
+      setTimeout(connectWebSocket, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 1.5, 15000);
     };
 
     ws.onerror = () => {
@@ -250,10 +280,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Update Character Count
+  // Update Character Count (and the live Zawgyi detection badge)
   function updateCharCount() {
-    const len = burmeseInput.value.length;
-    charCounter.textContent = `${len} စာလုံး`;
+    const value = burmeseInput.value;
+    charCounter.textContent = `${value.length} စာလုံး`;
+    if (zawgyiBadge) {
+      const isZg = value.length > 0
+        && window.MyanmarConverter
+        && window.MyanmarConverter.isZawgyi(value);
+      zawgyiBadge.style.display = isZg ? 'inline-block' : 'none';
+    }
   }
 
   // Save to History
@@ -330,6 +366,18 @@ document.addEventListener('DOMContentLoaded', () => {
       burmeseInput.focus();
     });
   });
+
+  // Click the live Zawgyi badge to convert in place
+  if (zawgyiBadge) {
+    zawgyiBadge.addEventListener('click', () => {
+      if (window.MyanmarConverter && burmeseInput.value) {
+        burmeseInput.value = window.MyanmarConverter.zawgyiToUnicode(burmeseInput.value);
+        updateCharCount();
+        showToast('✅ Zawgyi မှ Unicode သို့ ပြောင်းလဲပြီးပါပြီ');
+        burmeseInput.focus();
+      }
+    });
+  }
 
   function insertAtCursor(textarea, text) {
     const start = textarea.selectionStart;
@@ -506,6 +554,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Close modals when clicking the backdrop or pressing Escape
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('active');
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    }
+  });
+
   let isBrowsingInProgress = false;
 
   function browseWindowsFolder() {
@@ -592,6 +652,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const settingGeminiKey = document.getElementById('setting-gemini-key');
   const settingDeepseekKey = document.getElementById('setting-deepseek-key');
+  const clearKeysBtn = document.getElementById('btn-clear-api-keys');
+
+  // The server never returns raw keys; show a masked hint in the placeholder.
+  function applyKeyHint(input, info, placeholder) {
+    if (!input) return;
+    input.value = '';
+    input.placeholder = info && info.set ? `သိမ်းဆည်းပြီး ••••${info.hint}` : placeholder;
+  }
 
   openSettingsBtn.addEventListener('click', () => {
     settingFontFamily.value = userSettings.fontFamily;
@@ -601,17 +669,39 @@ document.addEventListener('DOMContentLoaded', () => {
     lineHeightVal.textContent = userSettings.lineHeight;
     settingTheme.value = userSettings.theme;
 
-    // Fetch saved API keys
+    // Fetch masked API key status
     fetch('/api/keys')
       .then(r => r.json())
       .then(keys => {
-        if (settingGeminiKey) settingGeminiKey.value = keys.GEMINI_API_KEY || '';
-        if (settingDeepseekKey) settingDeepseekKey.value = keys.DEEPSEEK_API_KEY || '';
+        applyKeyHint(settingGeminiKey, keys.GEMINI_API_KEY, 'AIzaSy...');
+        applyKeyHint(settingDeepseekKey, keys.DEEPSEEK_API_KEY, 'sk-...');
       })
       .catch(() => {});
 
     openModal(modalSettings);
   });
+
+  if (clearKeysBtn) {
+    clearKeysBtn.addEventListener('click', () => {
+      if (!confirm('သိမ်းဆည်းထားသော API Key အားလုံးကို ဖျက်ပစ်ရန် သေချာပါသလား?')) return;
+      fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          GEMINI_API_KEY_CLEAR: true,
+          DEEPSEEK_API_KEY_CLEAR: true,
+          OPENAI_API_KEY_CLEAR: true
+        })
+      })
+        .then(r => r.json())
+        .then(() => {
+          applyKeyHint(settingGeminiKey, { set: false }, 'AIzaSy...');
+          applyKeyHint(settingDeepseekKey, { set: false }, 'sk-...');
+          showToast('🗑️ API Key များကို ဖျက်ပြီးပါပြီ');
+        })
+        .catch(() => {});
+    });
+  }
 
   settingFontSize.addEventListener('input', () => {
     fontSizeVal.textContent = settingFontSize.value + 'px';
@@ -629,17 +719,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     localStorage.setItem('mm_opencode_settings', JSON.stringify(userSettings));
 
-    // Save API keys to backend
-    if (settingGeminiKey || settingDeepseekKey) {
-      const keys = {
-        GEMINI_API_KEY: settingGeminiKey ? settingGeminiKey.value.trim() : '',
-        DEEPSEEK_API_KEY: settingDeepseekKey ? settingDeepseekKey.value.trim() : ''
-      };
+    // Save API keys to backend (only send non-empty fields so stored keys are kept)
+    const keyPayload = {};
+    if (settingGeminiKey && settingGeminiKey.value.trim()) {
+      keyPayload.GEMINI_API_KEY = settingGeminiKey.value.trim();
+    }
+    if (settingDeepseekKey && settingDeepseekKey.value.trim()) {
+      keyPayload.DEEPSEEK_API_KEY = settingDeepseekKey.value.trim();
+    }
+    if (Object.keys(keyPayload).length) {
       fetch('/api/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(keys)
-      }).catch(() => {});
+        body: JSON.stringify(keyPayload)
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (res && res.keys) {
+            applyKeyHint(settingGeminiKey, res.keys.GEMINI_API_KEY, 'AIzaSy...');
+            applyKeyHint(settingDeepseekKey, res.keys.DEEPSEEK_API_KEY, 'sk-...');
+          }
+        })
+        .catch(() => {});
     }
 
     // Apply to Terminal
@@ -647,6 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
       term.options.fontFamily = userSettings.fontFamily;
       term.options.fontSize = userSettings.fontSize;
       term.options.lineHeight = userSettings.lineHeight;
+      term.options.theme = themeFor(userSettings.theme);
       if (fitAddon) fitAddon.fit();
     }
 
@@ -899,7 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('status-text').textContent = `OpenCode v${data.version || '1.4'} အသင့်ရှိပါသည်`;
       } else {
         document.getElementById('status-text').textContent = 'OpenCode မရှိသေးပါ';
-        document.querySelector('.status-dot').style.backgroundColor = '#ff7b72';
+        // The header dot tracks the WebSocket connection (see setConnectionStatus),
+        // so a missing CLI is reported through the text only.
       }
       if (data.cwd) {
         currentCwdSpan.textContent = data.cwd;
@@ -908,9 +1011,31 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(() => {});
 
+  // Populate the runner model picker from the installed OpenCode CLI. Falls back
+  // to the static <option> list when the CLI is unavailable or returns nothing.
+  function loadModelsFromCli() {
+    fetch('/api/models')
+      .then(r => r.json())
+      .then(res => {
+        const models = (res && res.models) || [];
+        if (!models.length) return;
+        const current = runnerModelSelect.value;
+        runnerModelSelect.innerHTML = '';
+        models.forEach(name => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          runnerModelSelect.appendChild(opt);
+        });
+        if (models.includes(current)) runnerModelSelect.value = current;
+      })
+      .catch(() => {});
+  }
+
   // Startup
   initTerminal();
   connectWebSocket();
   renderHistoryModal();
   renderRunnerHistory();
+  loadModelsFromCli();
 });

@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # --ignore-scripts skips the native node-pty build, which the lint/test
+      # steps do not need and which is slow/flaky on CI runners.
+      - run: npm ci --ignore-scripts
+
+      - run: npm run lint
+
+      - run: npm test

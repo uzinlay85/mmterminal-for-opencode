@@ -5,7 +5,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "app": "powershell -ExecutionPolicy Bypass -File scripts/launch.ps1"
+    "app": "cmd /c scripts\\launch.bat",
+    "test": "node --test",
+    "lint": "eslint ."
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": [
     "terminal",
@@ -26,5 +31,8 @@
     "ws": "^8.22.0",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5"
   }
 }

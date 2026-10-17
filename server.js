@@ -256,10 +256,12 @@ app.post('/api/browse-folder', (req, res) => {
         opencodeWebUrl = null;
       }
       return res.json({ success: true, cwd: currentCwd });
-    } else {
-      // User cancelled or closed dialog without selection
-      return res.json({ success: false, canceled: true, cwd: currentCwd });
     }
+    // No valid selection: user cancelled, or the dialog process failed.
+    if (code !== 0 && stderrData.trim()) {
+      return res.json({ success: false, canceled: true, cwd: currentCwd, error: stderrData.trim() });
+    }
+    return res.json({ success: false, canceled: true, cwd: currentCwd });
   });
 
   child.on('error', (err) => {
@@ -553,7 +555,7 @@ app.post('/api/opencode/run', (req, res) => {
     res.write(chunk);
   });
 
-  runner.on('close', (code) => {
+  runner.on('close', () => {
     res.end();
   });
 
