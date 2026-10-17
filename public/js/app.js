@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const folderInputPath = document.getElementById('folder-input-path');
   const confirmFolderBtn = document.getElementById('btn-confirm-folder');
   const openSettingsBtn = document.getElementById('btn-open-settings');
+  const openHelpBtn = document.getElementById('btn-open-help');
   const saveSettingsBtn = document.getElementById('btn-save-settings');
   const showHistoryBtn = document.getElementById('btn-show-history');
   const clearAllHistoryBtn = document.getElementById('btn-clear-all-history');
@@ -77,6 +78,14 @@ try {
   if (!Array.isArray(promptHistory)) promptHistory = [];
 } catch (e) {
   promptHistory = [];
+}
+
+  let recentProjects = [];
+try {
+  recentProjects = JSON.parse(localStorage.getItem('mm_opencode_recent_projects') || '[]');
+  if (!Array.isArray(recentProjects)) recentProjects = [];
+} catch (e) {
+  recentProjects = [];
 }
 
   // Monospace font MUST be first so xterm calculates standard character cell width!
@@ -309,6 +318,43 @@ try {
     localStorage.setItem('mm_opencode_history', JSON.stringify(promptHistory));
     renderHistoryModal();
     renderRunnerHistory();
+  }
+
+  function saveRecentProjects() {
+    localStorage.setItem('mm_opencode_recent_projects', JSON.stringify(recentProjects));
+  }
+
+  function addRecentProject(p) {
+    if (!p) return;
+    recentProjects = recentProjects.filter(item => item !== p);
+    recentProjects.unshift(p);
+    if (recentProjects.length > 12) recentProjects.pop();
+    saveRecentProjects();
+    renderRecentProjects();
+  }
+
+  function renderRecentProjects() {
+    const list = document.getElementById('recent-projects-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (recentProjects.length === 0) {
+      list.innerHTML = '<div style="color: var(--text-muted); padding: 6px; font-size: 12px;">မှတ်တမ်း မရှိသေးပါ</div>';
+      return;
+    }
+    recentProjects.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'history-item';
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.justifyContent = 'space-between';
+      row.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono);font-size:12px;">${escapeHtml(item)}</span>
+        <button class="tool-chip" style="margin-left:8px;font-size:11px;">ဖွင့်မည်</button>`;
+      row.onclick = () => {
+        folderInputPath.value = item;
+        confirmFolderBtn.click();
+      };
+      list.appendChild(row);
+    });
   }
 
   // Render History in Modal
@@ -595,6 +641,7 @@ try {
       if (data.success && data.cwd) {
         currentCwdSpan.textContent = data.cwd;
         folderInputPath.value = data.cwd;
+        addRecentProject(data.cwd);
         closeModal(modalFolder);
         showToast(`📁 Project Folder ကို "${data.cwd}" သို့ ပြောင်းလဲလိုက်ပါပြီ`);
         // Restart terminal in new directory
@@ -627,6 +674,7 @@ try {
 
   changeFolderBtn.addEventListener('click', () => {
     folderInputPath.value = currentCwdSpan.textContent || '';
+    renderRecentProjects();
     openModal(modalFolder);
     folderInputPath.focus();
   });
@@ -645,6 +693,7 @@ try {
       if (data.success) {
         currentCwdSpan.textContent = data.cwd;
         folderInputPath.value = data.cwd;
+        addRecentProject(data.cwd);
         closeModal(modalFolder);
         showToast(`📁 Project Folder ကို "${data.cwd}" သို့ ပြောင်းလဲပြီးပါပြီ`);
         // Restart terminal in new directory
@@ -776,6 +825,12 @@ try {
     renderHistoryModal();
     openModal(modalHistory);
   });
+
+  if (openHelpBtn) {
+    openHelpBtn.addEventListener('click', () => {
+      openModal(document.getElementById('modal-help'));
+    });
+  }
 
   clearAllHistoryBtn.addEventListener('click', () => {
     if (confirm('မှတ်တမ်းအားလုံးကို ဖျက်ပစ်ရန် သေချာပါသလား?')) {
@@ -1033,6 +1088,7 @@ try {
       if (data.cwd) {
         currentCwdSpan.textContent = data.cwd;
         folderInputPath.value = data.cwd;
+        addRecentProject(data.cwd);
       }
     })
     .catch(() => {});
@@ -1065,5 +1121,6 @@ try {
   connectWebSocket();
   renderHistoryModal();
   renderRunnerHistory();
+  renderRecentProjects();
   loadModelsFromCli();
 });

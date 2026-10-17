@@ -63,6 +63,9 @@
       <button id="btn-open-settings" class="action-btn notranslate" title="ဖောင့်နှင့် အပြင်အဆင်">
         <span>⚙️ ဖောင့်/အပြင်အဆင်</span>
       </button>
+      <button id="btn-open-help" class="action-btn notranslate" title="အသုံးပြုနည်း လမ်းညွှန်">
+        <span>❓ အသုံးပြုနည်း</span>
+      </button>
     </div>
   </header>
 
@@ -278,6 +281,11 @@
           <span>📂 Windows Folder Browser ဖြင့် ရွေးချယ်မည်</span>
         </button>
 
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">📜 လတ်တလော သုံးခဲ့သော Project များ:</div>
+          <div id="recent-projects-list" class="notranslate" style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
           <span style="font-size: 12px; color: var(--text-muted);">သို့မဟုတ် လမ်းကြောင်း တိုက်ရိုက်ရိုက်ထည့်ရန်:</span>
         </div>
@@ -377,6 +385,40 @@
           </button>
           <button class="action-btn notranslate" data-close="modal-history">ပိတ်မည်</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="modal-help" class="modal-overlay notranslate">
+    <div class="modal-box notranslate" style="max-width: 720px;">
+      <div class="modal-header notranslate">
+        <span>❓ အသုံးပြုနည်း လမ်းညွှန်</span>
+        <button class="close-btn" data-close="modal-help">&times;</button>
+      </div>
+      <div class="modal-body notranslate" style="line-height:1.7;font-size:13px;">
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၁။ စတင်ခြင်း</h4>
+        <p>Desktop ပေါ်ရှိ <b>Myanmar OpenCode Terminal</b> icon (သို့မဟုတ်) <b>Start-Terminal.bat</b> ကို Double-Click ဖွင့်ပါ။ Server စတင်ပြီး Browser (Edge App Mode) အလိုအလျောက် ပွင့်လာပါမည်။</p>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၂။ Project Folder ရွေးချယ်ခြင်း</h4>
+        <p>Header ရှိ <b>📂 Browse</b> ကို နှိပ်၍ Windows Folder Dialog ဖြင့် Project Folder ရွေးပါ (သို့မဟုတ်) <b>✏️ ရိုက်ထည့်ရန်</b> ဖြင့် path တိုက်ရိုက်ရိုက်ထည့်ပါ။ ယခင်သုံးခဲ့သော Project များကို Modal ထဲရှိ စာရင်းမှ တစ်ချက်နှိပ်၍ ပြန်ဖွင့်နိုင်ပါသည်။</p>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၃။ မြန်မာလို Prompt ရိုက်၍ မေးမြန်းခြင်း</h4>
+        <p>အောက်ခြေ <b>Burmese Composer</b> အကွက်တွင် မြန်မာလို ရိုက်ထည့်ပြီး <b>Enter</b> (သို့မဟုတ် <b>Ctrl+Enter</b>) နှိပ်ပါ။ OpenCode ထံသို့ prompt ရောက်ရှိသွားပါမည်။ <b>Shift+Enter</b> ဖြင့် စာကြောင်းအသစ် ဆင်းနိုင်ပါသည်။</p>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၄။ OpenCode စတင်ခြင်း</h4>
+        <p>Header ရှိ <b>🚀 OpenCode စတင်မည်</b> (သို့မဟုတ်) <b>💬 စာဖတ်မုဒ်</b> ခလုတ်ကို နှိပ်ပါ။ Terminal ထဲတွင် OpenCode TUI စတင်ပါမည်။</p>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၅။ Web UI အသုံးပြုခြင်း</h4>
+        <p><b>🌐 OpenCode Web UI</b> tab သို့ သွားပြီး <b>▶️ Web Server စတင်မည်</b> ကို နှိပ်ပါ။ ပထမဆုံးအကြိမ်တွင် <b>Pairing Link</b> ကို copy ကူး၍ Connect နှိပ်ပါ။</p>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၆️⃣ အသုံးဝင်သော ခလုတ်များ</h4>
+        <ul style="margin:4px 0 4px 18px;">
+          <li><b>⛔ ရပ်မည် (Ctrl+C)</b> — running process ရပ်တန့်</li>
+          <li><b>⎋ Popup ပိတ်မည် (Esc)</b> — dialog/popup ပိတ်</li>
+          <li><b>✨ Screen ပြင်မည် (Ctrl+L)</b> — screen ပြန်ဆွဲသား</li>
+          <li><b>🧹 Terminal ရှင်းမည်</b> — screen ရှင်းလင်း</li>
+          <li><b>🔄 ပြန်စမည်</b> — terminal session ပြန်စ</li>
+        </ul>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၇️⃣ Zawgyi → Unicode</h4>
+        <p>Zawgyi စာသား ကူးထည့်လိုက်ပါက <b>⚠️ Zawgyi ဖြစ်နေသည်</b> badge ပေါ်လာပါမည်။ နှိပ်လိုက်ရုံဖြင့် Unicode သို့ ပြောင်းပေးပါသည်။</p>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၈️⃣ မှတ်တမ်း (History)</h4>
+        <p><b>📜 မှတ်တမ်း</b> ခလုတ်ဖြင့် ယခင် prompt များကို ပြန်ကြည့်နိုင်ပါသည်။ Project Folder များကိုလည်း Modal ထဲရှိ စာရင်းမှ ပြန်ဖွင့်နိုင်ပါသည်။</p>
       </div>
     </div>
   </div>
