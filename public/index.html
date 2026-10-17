@@ -42,7 +42,10 @@
       <div class="cwd-bar notranslate" title="လက်ရှိ အလုပ်လုပ်နေသော ဖိုဒါ လမ်းကြောင်း">
         <span class="cwd-icon">📁</span>
         <span id="current-cwd" class="cwd-path">Loading...</span>
-        <button id="btn-change-folder" class="tool-chip notranslate" style="margin-left: auto; padding: 2px 8px;">ပြောင်းရန်</button>
+        <div style="display: flex; gap: 4px; margin-left: auto; flex-shrink: 0;">
+          <button id="btn-browse-folder" class="tool-chip notranslate" style="color: #58a6ff; font-weight: 500; padding: 2px 8px;" title="Windows File Explorer ဖြင့် ဖိုဒါရွေးချယ်မည်">📂 Browse</button>
+          <button id="btn-change-folder" class="tool-chip notranslate" style="padding: 2px 8px;" title="ဖိုဒါလမ်းကြောင်း တိုက်ရိုက်ရိုက်ထည့်မည်">✏️ ရိုက်ထည့်ရန်</button>
+        </div>
       </div>
     </div>
 
@@ -266,13 +269,21 @@
         <button class="close-btn" data-close="modal-folder">&times;</button>
       </div>
       <div class="modal-body notranslate">
-        <p style="font-size: 13px; color: var(--text-muted);">
-          OpenCode အသုံးပြုလိုသည့် Project Folder လမ်းကြောင်း (Path) ကို ထည့်သွင်းပါ:
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Windows File Manager ဖြင့် ဖိုဒါရွေးချယ်နိုင်သလို အောက်ပါအကွက်တွင် လမ်းကြောင်း (Path) ကိုလည်း တိုက်ရိုက် ထည့်သွင်းနိုင်ပါသည်:
         </p>
+
+        <button id="btn-modal-browse" class="action-btn notranslate" style="width: 100%; margin-bottom: 14px; background: #21262d; border: 1px solid #388bfd; padding: 9px 12px; justify-content: center; font-size: 13px; color: #58a6ff; font-weight: 600; cursor: pointer;">
+          <span>📂 Windows Folder Browser ဖြင့် ရွေးချယ်မည်</span>
+        </button>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="font-size: 12px; color: var(--text-muted);">သို့မဟုတ် လမ်းကြောင်း တိုက်ရိုက်ရိုက်ထည့်ရန်:</span>
+        </div>
         <input type="text" id="folder-input-path" class="setting-input notranslate" style="width: 100%; font-family: var(--font-mono);" placeholder="C:\Users\...\MyProject">
-        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
           <button class="action-btn notranslate" data-close="modal-folder">မလုပ်တော့ပါ</button>
-          <button id="btn-confirm-folder" class="action-btn btn-primary notranslate">ပြောင်းလဲမည်</button>
+          <button id="btn-confirm-folder" class="action-btn btn-primary notranslate">အတည်ပြုမည်</button>
         </div>
       </div>
     </div>

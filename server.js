@@ -9,7 +9,25 @@ const pty = require('node-pty');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server, path: '/terminal' });
+
+// Only allow same-origin callers from the local machine. This guards /api/* and
+// the terminal WebSocket against cross-site / DNS-rebinding requests issued by
+// other pages the user may have open in their browser.
+const ALLOWED_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+function isLocalOrigin(origin) {
+  if (!origin) return true; // non-browser client (curl, tests) sends no Origin
+  try {
+    return ALLOWED_HOSTNAMES.has(new URL(origin).hostname);
+  } catch (e) {
+    return false;
+  }
+}
+
+const wss = new WebSocket.Server({
+  server,
+  path: '/terminal',
+  verifyClient: (info) => isLocalOrigin(info.origin)
+});
 
 const PORT = process.env.PORT || 3820;
 let currentCwd = process.cwd();
@@ -21,6 +39,14 @@ let opencodeWebUrl = null;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Reject API calls coming from a non-local Origin header.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') && !isLocalOrigin(req.headers.origin)) {
+    return res.status(403).json({ error: 'Forbidden: cross-origin request blocked' });
+  }
+  next();
+});
+
 // Cached OpenCode Info
 let cachedOpenCode = {
   installed: true,
@@ -28,11 +54,17 @@ let cachedOpenCode = {
   path: 'opencode'
 };
 
-// Auto-cleanup stale OpenCode lock files
+// Auto-cleanup stale OpenCode lock files.
+// IMPORTANT: only remove lock files that are genuinely old (default 1 hour).
+// A blanket wipe could disrupt an OpenCode session that is currently running.
+const STALE_LOCK_MS = 60 * 60 * 1000;
+
 function cleanupStaleLocks() {
   try {
     const home = process.env.USERPROFILE || process.env.HOME;
     const stateDir = path.join(home, '.local', 'state', 'opencode');
+
+    // Remove a dead service.json only when its recorded pid is no longer alive.
     const serviceFile = path.join(stateDir, 'service.json');
     if (fs.existsSync(serviceFile)) {
       try {
@@ -46,10 +78,16 @@ function cleanupStaleLocks() {
         }
       } catch (e) {}
     }
+
     const locksDir = path.join(stateDir, 'locks');
     if (fs.existsSync(locksDir)) {
-      fs.readdirSync(locksDir).forEach(f => {
-        try { fs.unlinkSync(path.join(locksDir, f)); } catch (e) {}
+      const now = Date.now();
+      fs.readdirSync(locksDir).forEach((f) => {
+        const lockPath = path.join(locksDir, f);
+        try {
+          const stat = fs.statSync(lockPath);
+          if (now - stat.mtimeMs > STALE_LOCK_MS) fs.unlinkSync(lockPath);
+        } catch (e) {}
       });
     }
   } catch (err) {}
@@ -82,36 +120,65 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Local config for Custom AI API Keys
-const keysConfigFile = path.join(__dirname, 'api_keys.json');
+// Local config for Custom AI API Keys.
+// Stored OUTSIDE the repo (user config dir) so keys are never accidentally committed.
+const configDir = process.env.MYOPENT_CONFIG_DIR
+  || path.join(process.env.USERPROFILE || process.env.HOME || __dirname, '.config', 'myanmar-opencode-terminal');
+const keysConfigFile = path.join(configDir, 'api_keys.json');
+const legacyKeysFile = path.join(__dirname, 'api_keys.json');
+const KEY_NAMES = ['GEMINI_API_KEY', 'DEEPSEEK_API_KEY', 'OPENAI_API_KEY'];
+
+function readKeysFile(file) {
+  try {
+    if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')) || {};
+  } catch (e) {}
+  return {};
+}
 
 function loadApiKeys() {
-  try {
-    if (fs.existsSync(keysConfigFile)) {
-      const keys = JSON.parse(fs.readFileSync(keysConfigFile, 'utf8'));
-      if (keys.GEMINI_API_KEY) process.env.GEMINI_API_KEY = keys.GEMINI_API_KEY;
-      if (keys.DEEPSEEK_API_KEY) process.env.DEEPSEEK_API_KEY = keys.DEEPSEEK_API_KEY;
-      if (keys.OPENAI_API_KEY) process.env.OPENAI_API_KEY = keys.OPENAI_API_KEY;
-    }
-  } catch (e) {}
+  // One-time migration of a legacy repo-local api_keys.json.
+  if (!fs.existsSync(keysConfigFile) && fs.existsSync(legacyKeysFile)) {
+    try {
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.copyFileSync(legacyKeysFile, keysConfigFile);
+      fs.unlinkSync(legacyKeysFile);
+    } catch (e) {}
+  }
+  const keys = readKeysFile(keysConfigFile);
+  for (const name of KEY_NAMES) {
+    if (keys[name]) process.env[name] = keys[name];
+  }
 }
 loadApiKeys();
 
-app.get('/api/keys', (req, res) => {
-  try {
-    const keys = fs.existsSync(keysConfigFile) ? JSON.parse(fs.readFileSync(keysConfigFile, 'utf8')) : {};
-    res.json(keys);
-  } catch (e) {
-    res.json({});
+// Never expose raw key values to the browser — only whether a key is stored.
+function maskedKeys() {
+  const keys = readKeysFile(keysConfigFile);
+  const out = {};
+  for (const name of KEY_NAMES) {
+    const value = keys[name] || '';
+    out[name] = { set: Boolean(value), hint: value ? value.slice(-4) : '' };
   }
+  return out;
+}
+
+app.get('/api/keys', (req, res) => {
+  res.json(maskedKeys());
 });
 
 app.post('/api/keys', (req, res) => {
   try {
-    const keys = req.body || {};
-    fs.writeFileSync(keysConfigFile, JSON.stringify(keys, null, 2), 'utf8');
+    const incoming = req.body || {};
+    const next = Object.assign({}, readKeysFile(keysConfigFile));
+    for (const name of KEY_NAMES) {
+      const value = typeof incoming[name] === 'string' ? incoming[name].trim() : '';
+      if (value) next[name] = value;                 // non-empty input replaces
+      if (incoming[`${name}_CLEAR`]) delete next[name]; // explicit removal flag
+    }
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(keysConfigFile, JSON.stringify(next, null, 2), 'utf8');
     loadApiKeys();
-    res.json({ success: true });
+    res.json({ success: true, keys: maskedKeys() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -143,6 +210,65 @@ app.post('/api/cwd', (req, res) => {
   }
 });
 
+// Track whether a native folder dialog is currently open
+let isBrowsingFolder = false;
+
+// API: Browse Folder using Native Windows Folder Dialog
+app.post('/api/browse-folder', (req, res) => {
+  if (isBrowsingFolder) {
+    return res.status(409).json({ busy: true, error: 'ဖိုဒါရွေးချယ်သည့် Window ဖွင့်ထားပြီးဖြစ်ပါသည်' });
+  }
+
+  isBrowsingFolder = true;
+  const scriptPath = path.join(__dirname, 'scripts', 'select_folder.ps1');
+  const initial = (req.body && req.body.initialPath) ? req.body.initialPath : currentCwd;
+
+  const child = spawn('powershell.exe', [
+    '-NoProfile',
+    '-STA',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', scriptPath,
+    '-InitialPath', initial
+  ], {
+    windowsHide: true
+  });
+
+  let stdoutData = '';
+  let stderrData = '';
+
+  child.stdout.on('data', (d) => {
+    stdoutData += d.toString();
+  });
+
+  child.stderr.on('data', (d) => {
+    stderrData += d.toString();
+  });
+
+  child.on('close', (code) => {
+    isBrowsingFolder = false;
+    const selected = stdoutData.trim();
+    if (selected && fs.existsSync(selected) && fs.statSync(selected).isDirectory()) {
+      currentCwd = selected;
+      // If Web UI was running, stop it so it restarts in the new folder
+      if (opencodeWebProcess) {
+        try { exec(`taskkill /F /T /PID ${opencodeWebProcess.pid}`, () => {}); } catch(e) {}
+        opencodeWebProcess = null;
+        opencodeWebUrl = null;
+      }
+      return res.json({ success: true, cwd: currentCwd });
+    } else {
+      // User cancelled or closed dialog without selection
+      return res.json({ success: false, canceled: true, cwd: currentCwd });
+    }
+  });
+
+  child.on('error', (err) => {
+    isBrowsingFolder = false;
+    return res.status(500).json({ error: err.message });
+  });
+});
+
+
 function checkHttpReachable(port, host = '127.0.0.1') {
   return new Promise((resolve) => {
     const req = http.request({
@@ -156,6 +282,34 @@ function checkHttpReachable(port, host = '127.0.0.1') {
     });
     req.on('error', () => resolve(false));
     req.on('timeout', () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
+
+// Probe a port and decide whether it is actually an OpenCode web UI.
+// This avoids reporting an unrelated service that happens to use port 45278.
+function probeOpenCodeWeb(port, host = '127.0.0.1') {
+  return new Promise((resolve) => {
+    const req = http.request({
+      hostname: host,
+      port: port,
+      path: '/',
+      method: 'GET',
+      timeout: 1200
+    }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { if (body.length < 200000) body += chunk; });
+      res.on('end', () => {
+        const reachable = res.statusCode >= 200 && res.statusCode < 400;
+        const headerHit = /opencode/i.test(res.headers['server'] || '')
+          || res.headers['x-opencode-version'] != null;
+        const bodyHit = /opencode/i.test(body);
+        resolve({ reachable, isOpenCode: reachable && (headerHit || bodyHit) });
+      });
+    });
+    req.on('error', () => resolve({ reachable: false, isOpenCode: false }));
+    req.on('timeout', () => { req.destroy(); resolve({ reachable: false, isOpenCode: false }); });
     req.end();
   });
 }
@@ -184,8 +338,10 @@ app.get('/api/opencode/web/status', async (req, res) => {
     } catch(e) {}
   }
 
-  // Check OpenCode 2.0 default background service port 45278
-  if (await checkHttpReachable(45278)) {
+  // Auto-detect an already-running OpenCode 2.0 background service on port 45278.
+  // probeOpenCodeWeb confirms the response looks like OpenCode so an unrelated
+  // service using the same port is not falsely reported as running.
+  if ((await probeOpenCodeWeb(45278)).isOpenCode) {
     opencodeWebUrl = 'http://127.0.0.1:45278/';
     return res.json({ running: true, url: opencodeWebUrl });
   }
@@ -199,7 +355,7 @@ app.get('/api/opencode/web/status', async (req, res) => {
 // API: OpenCode Web UI - Start
 app.post('/api/opencode/web/start', async (req, res) => {
   // 1. Check if OpenCode 2.0 service on 45278 is already active
-  if (await checkHttpReachable(45278)) {
+  if ((await probeOpenCodeWeb(45278)).isOpenCode) {
     opencodeWebUrl = 'http://127.0.0.1:45278/';
     return res.json({ success: true, url: opencodeWebUrl });
   }
@@ -323,6 +479,38 @@ app.get('/api/opencode/web/pair', (req, res) => {
   });
 });
 
+// API: List models known to the installed OpenCode CLI (used to populate the
+// runner's model picker so it does not drift from the real CLI).
+app.get('/api/models', (req, res) => {
+  const isWin = process.platform === 'win32';
+  const child = isWin
+    ? spawn('cmd.exe', ['/c', 'opencode', 'models'])
+    : spawn('opencode', ['models']);
+
+  let out = '';
+  let answered = false;
+  const finish = (models) => {
+    if (answered) return;
+    answered = true;
+    res.json({ models });
+  };
+
+  child.stdout.on('data', (d) => { out += d.toString(); });
+  child.stderr.on('data', (d) => { out += d.toString(); });
+  child.on('error', () => finish([]));
+  child.on('close', () => {
+    const models = out
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => /^[\w.-]+\/[\w.-]+$/.test(line));
+    finish([...new Set(models)]);
+  });
+  setTimeout(() => {
+    try { child.kill(); } catch (e) {}
+    finish([]);
+  }, 8000);
+});
+
 // API: Direct AI Prompt Runner (Streams response)
 app.post('/api/opencode/run', (req, res) => {
   const { prompt, model } = req.body;
@@ -339,13 +527,23 @@ app.post('/api/opencode/run', (req, res) => {
   }
   args.push('--dir', currentCwd);
 
-  const runner = spawn('opencode.cmd', args, {
-    cwd: currentCwd,
-    env: Object.assign({}, process.env, {
-      PYTHONIOENCODING: 'utf-8',
-      LANG: 'en_US.UTF-8'
-    })
-  });
+  // On Windows the OpenCode CLI is the `opencode.cmd` shim, which must be run
+  // through cmd.exe (`shell`/`.cmd` files cannot be spawned directly by Node).
+  const runner = process.platform === 'win32'
+    ? spawn('cmd.exe', ['/c', 'opencode', ...args], {
+        cwd: currentCwd,
+        env: Object.assign({}, process.env, {
+          PYTHONIOENCODING: 'utf-8',
+          LANG: 'en_US.UTF-8'
+        })
+      })
+    : spawn('opencode', args, {
+        cwd: currentCwd,
+        env: Object.assign({}, process.env, {
+          PYTHONIOENCODING: 'utf-8',
+          LANG: 'en_US.UTF-8'
+        })
+      });
 
   runner.stdout.on('data', (chunk) => {
     res.write(chunk);
@@ -452,6 +650,10 @@ wss.on('connection', (ws) => {
         }
       } else if (msg.type === 'restart') {
         spawnTerminal(msg.shell || 'powershell', msg.cwd);
+      } else if (msg.type === 'ping') {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'pong' }));
+        }
       }
     } catch (e) {
       // Fallback: direct input string

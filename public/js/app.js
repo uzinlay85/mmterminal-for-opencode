@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const shellSelect = document.getElementById('shell-select');
   const currentCwdSpan = document.getElementById('current-cwd');
   const changeFolderBtn = document.getElementById('btn-change-folder');
+  const browseFolderBtn = document.getElementById('btn-browse-folder');
+  const modalBrowseBtn = document.getElementById('btn-modal-browse');
   const toastEl = document.getElementById('toast');
 
   // Modals
@@ -504,7 +506,57 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  let isBrowsingInProgress = false;
+
+  function browseWindowsFolder() {
+    if (isBrowsingInProgress) {
+      showToast('⏳ ဖိုဒါရွေးချယ်သည့် Window ပွင့်နေပါသည်...');
+      return;
+    }
+    isBrowsingInProgress = true;
+    showToast('📂 Windows Folder Browser ကို ဖွင့်နေပါသည်...');
+
+    fetch('/api/browse-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initialPath: currentCwdSpan.textContent || '' })
+    })
+    .then(r => r.json())
+    .then(data => {
+      isBrowsingInProgress = false;
+      if (data.success && data.cwd) {
+        currentCwdSpan.textContent = data.cwd;
+        folderInputPath.value = data.cwd;
+        closeModal(modalFolder);
+        showToast(`📁 Project Folder ကို "${data.cwd}" သို့ ပြောင်းလဲလိုက်ပါပြီ`);
+        // Restart terminal in new directory
+        if (ws && isWsConnected) {
+          ws.send(JSON.stringify({ type: 'restart', shell: shellSelect.value, cwd: data.cwd }));
+        }
+      } else if (data.canceled) {
+        // User closed or canceled
+      } else if (data.busy) {
+        showToast('⚠️ ဖိုဒါရွေးချယ်သည့် Window ပွင့်နေဆဲဖြစ်ပါသည်');
+      } else if (data.error) {
+        alert('Folder ရွေးချယ်မှု အဆင်မပြေပါ: ' + data.error);
+      }
+    })
+    .catch(err => {
+      isBrowsingInProgress = false;
+      alert('Error: ' + err.message);
+    });
+  }
+
+  if (browseFolderBtn) {
+    browseFolderBtn.addEventListener('click', browseWindowsFolder);
+  }
+
+  if (modalBrowseBtn) {
+    modalBrowseBtn.addEventListener('click', browseWindowsFolder);
+  }
+
   changeFolderBtn.addEventListener('click', () => {
+    folderInputPath.value = currentCwdSpan.textContent || '';
     openModal(modalFolder);
     folderInputPath.focus();
   });
@@ -522,8 +574,9 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(data => {
       if (data.success) {
         currentCwdSpan.textContent = data.cwd;
+        folderInputPath.value = data.cwd;
         closeModal(modalFolder);
-        showToast('📁 Directory ကို ပြောင်းလဲပြီးပါပြီ');
+        showToast(`📁 Project Folder ကို "${data.cwd}" သို့ ပြောင်းလဲပြီးပါပြီ`);
         // Restart terminal in new directory
         if (ws && isWsConnected) {
           ws.send(JSON.stringify({ type: 'restart', shell: shellSelect.value, cwd: data.cwd }));

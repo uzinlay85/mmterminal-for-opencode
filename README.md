@@ -43,6 +43,9 @@ Windows ပေါ်တွင် **OpenCode AI Assistant** ကို အသု�
 7. **📜 Prompt History (မှတ်တမ်း)**:
    - ယခင်က မေးမြန်းခဲ့ဖူးသော မြန်မာ prompt များကို အချိန်မရွေး ပြန်လည်ကြည့်ရှု အသုံးပြုနိုင်ပါသည်။
 
+8. **📂 Windows Folder Browser GUI (Visual Project Picker)**:
+   - Project ဖိုဒါလမ်းကြောင်းကို လက်ဖြင့် စာရိုက်ထည့်စရာမလိုဘဲ Header ဘားရှိ `📂 Browse` ခလုတ်ကို နှိပ်ကာ Windows File Manager / Folder Dialog ဖြင့် Visual အနေဖြင့် လွယ်ကူစွာ ရှာဖွေရွေးချယ်ပြောင်းလဲနိုင်ပါသည်။
+
 ---
 
 ## 🚀 စတင်အသုံးပြုပုံ (How to Launch)
