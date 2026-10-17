@@ -401,6 +401,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  const startOpenCodeMiniBtn = document.getElementById('btn-start-opencode-mini');
+  if (startOpenCodeMiniBtn) {
+    startOpenCodeMiniBtn.addEventListener('click', () => {
+      if (ws && isWsConnected) {
+        ws.send(JSON.stringify({ type: 'input', data: '\x03' }));
+        setTimeout(() => {
+          ws.send(JSON.stringify({ type: 'input', data: 'opencode mini\r' }));
+        }, 100);
+        showToast('💬 OpenCode Mini (စာဖတ်မုဒ်) ကို စတင်နေပါသည်...');
+        term.focus();
+      }
+    });
+  }
+
   const ctrlCBtn = document.getElementById('btn-ctrl-c');
   if (ctrlCBtn) {
     ctrlCBtn.addEventListener('click', () => {
