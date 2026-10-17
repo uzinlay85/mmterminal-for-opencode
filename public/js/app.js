@@ -71,7 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let reconnectDelay = 2000;
   let activeTab = 'terminal';
   let webServerUrl = null;
-  let promptHistory = JSON.parse(localStorage.getItem('mm_opencode_history') || '[]');
+  let promptHistory = [];
+try {
+  promptHistory = JSON.parse(localStorage.getItem('mm_opencode_history') || '[]');
+  if (!Array.isArray(promptHistory)) promptHistory = [];
+} catch (e) {
+  promptHistory = [];
+}
 
   // Monospace font MUST be first so xterm calculates standard character cell width!
   const defaultTermFont = "'Cascadia Code', 'Consolas', 'Pyidaungsu', 'Myanmar Text', 'Noto Sans Myanmar', monospace";
@@ -121,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (e) {}
 
   // If old settings had Pyidaungsu first, upgrade to monospace-first
-  if (!parsedSettings.fontFamily || parsedSettings.fontFamily.includes("'Pyidaungsu', 'Myanmar Text'")) {
+  if (typeof parsedSettings.fontFamily !== 'string' || parsedSettings.fontFamily.includes("'Pyidaungsu', 'Myanmar Text'")) {
     parsedSettings.fontFamily = defaultTermFont;
   }
 
@@ -133,10 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }, parsedSettings);
 
   // Toast Helper
+  let toastTimer = null;
   function showToast(message, duration = 2500) {
     toastEl.textContent = message;
     toastEl.classList.add('show');
-    setTimeout(() => {
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
       toastEl.classList.remove('show');
     }, duration);
   }
@@ -654,6 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const settingGeminiKey = document.getElementById('setting-gemini-key');
   const settingDeepseekKey = document.getElementById('setting-deepseek-key');
+  const settingOpenaiKey = document.getElementById('setting-openai-key');
   const clearKeysBtn = document.getElementById('btn-clear-api-keys');
 
   // The server never returns raw keys; show a masked hint in the placeholder.
@@ -677,6 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(keys => {
         applyKeyHint(settingGeminiKey, keys.GEMINI_API_KEY, 'AIzaSy...');
         applyKeyHint(settingDeepseekKey, keys.DEEPSEEK_API_KEY, 'sk-...');
+         applyKeyHint(settingOpenaiKey, keys.OPENAI_API_KEY, 'sk-...');
       })
       .catch(() => {});
 
@@ -729,6 +739,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (settingDeepseekKey && settingDeepseekKey.value.trim()) {
       keyPayload.DEEPSEEK_API_KEY = settingDeepseekKey.value.trim();
     }
+    if (settingOpenaiKey && settingOpenaiKey.value.trim()) {
+      keyPayload.OPENAI_API_KEY = settingOpenaiKey.value.trim();
+    }
     if (Object.keys(keyPayload).length) {
       fetch('/api/keys', {
         method: 'POST',
@@ -740,6 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (res && res.keys) {
             applyKeyHint(settingGeminiKey, res.keys.GEMINI_API_KEY, 'AIzaSy...');
             applyKeyHint(settingDeepseekKey, res.keys.DEEPSEEK_API_KEY, 'sk-...');
+             applyKeyHint(settingOpenaiKey, res.keys.OPENAI_API_KEY, 'sk-...');
           }
         })
         .catch(() => {});
@@ -844,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(res => {
         if (res.running && res.url) {
           webServerUrl = res.url;
-          webuiIframe.src = res.url;
+          if (webuiIframe.src !== res.url) webuiIframe.src = res.url;
           webuiIframe.style.display = 'block';
           webuiPlaceholder.style.display = 'none';
           webuiServerBadge.textContent = '● Web Server အလုပ်လုပ်နေပါသည်: ' + res.url;
@@ -930,6 +944,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnRunAiPrompt.addEventListener('click', runAiPrompt);
   runnerPromptInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       runAiPrompt();
     }
   });
@@ -944,6 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     saveToHistory(prompt);
+    runnerPromptInput.value = '';
 
     const model = runnerModelSelect.value;
     runnerOutputBox.innerHTML = `
@@ -956,6 +972,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnRunAiPrompt.disabled = true;
     btnRunAiPrompt.style.opacity = '0.6';
+    const safetyTimer = setTimeout(() => {
+      btnRunAiPrompt.disabled = false;
+      btnRunAiPrompt.style.opacity = '1';
+      showToast('⚠️ အချိန်ကြာမြင့်နေသဖြင့် ရပ်တန့်လိုက်ပါသည်');
+    }, 120000);
 
     fetch('/api/opencode/run', {
       method: 'POST',
@@ -970,6 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
       function readChunk() {
         reader.read().then(({ done, value }) => {
           if (done) {
+            clearTimeout(safetyTimer);
             btnRunAiPrompt.disabled = false;
             btnRunAiPrompt.style.opacity = '1';
             showToast('✅ OpenCode မှ ဖြေကြားပြီးပါပြီ');
@@ -980,6 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
           runnerOutputBox.scrollTop = runnerOutputBox.scrollHeight;
           readChunk();
         }).catch(err => {
+          clearTimeout(safetyTimer);
           contentEl.textContent += '\n\n[Error reading response: ' + err.message + ']';
           btnRunAiPrompt.disabled = false;
           btnRunAiPrompt.style.opacity = '1';
@@ -989,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
       readChunk();
     })
     .catch(err => {
+      clearTimeout(safetyTimer);
       runnerOutputBox.innerHTML = `<div style="color: #ff7b72;">Error: ${err.message}</div>`;
       btnRunAiPrompt.disabled = false;
       btnRunAiPrompt.style.opacity = '1';
@@ -1016,11 +1040,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Populate the runner model picker from the installed OpenCode CLI. Falls back
   // to the static <option> list when the CLI is unavailable or returns nothing.
   function loadModelsFromCli() {
+    runnerModelSelect.disabled = true;
     fetch('/api/models')
       .then(r => r.json())
       .then(res => {
         const models = (res && res.models) || [];
-        if (!models.length) return;
+        if (!models.length) { runnerModelSelect.disabled = false; return; }
         const current = runnerModelSelect.value;
         runnerModelSelect.innerHTML = '';
         models.forEach(name => {
@@ -1030,8 +1055,9 @@ document.addEventListener('DOMContentLoaded', () => {
           runnerModelSelect.appendChild(opt);
         });
         if (models.includes(current)) runnerModelSelect.value = current;
+        runnerModelSelect.disabled = false;
       })
-      .catch(() => {});
+      .catch(() => { runnerModelSelect.disabled = false; });
   }
 
   // Startup

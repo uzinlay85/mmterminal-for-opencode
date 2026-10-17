@@ -55,12 +55,14 @@
     let uniScore = 0;
 
     for (const pat of zgPatterns) {
-      const match = text.match(pat);
-      if (match) zgScore += match.length * 2;
+      const re = new RegExp(pat.source, pat.flags.includes('g') ? pat.flags : pat.flags + 'g');
+      const matches = text.match(re);
+      if (matches) zgScore += matches.length * 2;
     }
     for (const pat of uniPatterns) {
-      const match = text.match(pat);
-      if (match) uniScore += match.length * 2;
+      const re = new RegExp(pat.source, pat.flags.includes('g') ? pat.flags : pat.flags + 'g');
+      const matches = text.match(re);
+      if (matches) uniScore += matches.length * 2;
     }
 
     // Specific Zawgyi indicators

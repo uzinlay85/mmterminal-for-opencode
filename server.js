@@ -49,7 +49,7 @@ app.use((req, res, next) => {
 
 // Cached OpenCode Info
 let cachedOpenCode = {
-  installed: true,
+  installed: false,
   version: '1.4.3',
   path: 'opencode'
 };
@@ -73,7 +73,11 @@ function cleanupStaleLocks() {
           try {
             process.kill(data.pid, 0);
           } catch (e) {
-            fs.unlinkSync(serviceFile);
+            // Only delete when the process is genuinely gone (ESRCH).
+            // EPERM means it exists but we lack permission to signal it.
+            if (e && (e.code === 'ESRCH' || e.errno === -3)) {
+              try { fs.unlinkSync(serviceFile); } catch (e2) {}
+            }
           }
         }
       } catch (e) {}
@@ -233,6 +237,15 @@ app.post('/api/browse-folder', (req, res) => {
 
   let stdoutData = '';
   let stderrData = '';
+  let responded = false;
+
+  const sendBrowse = (status, payload) => {
+    if (responded) return;
+    responded = true;
+    isBrowsingFolder = false;
+    if (status === 200) res.json(payload);
+    else res.status(status).json(payload);
+  };
 
   child.stdout.on('data', (d) => {
     stdoutData += d.toString();
@@ -245,12 +258,10 @@ app.post('/api/browse-folder', (req, res) => {
   // Safety timeout: 2 minutes
   const timer = setTimeout(() => {
     try { child.kill(); } catch (e) {}
-    isBrowsingFolder = false;
   }, 120000);
 
   child.on('close', (code) => {
     clearTimeout(timer);
-    isBrowsingFolder = false;
     const selected = stdoutData.trim();
     if (selected && fs.existsSync(selected) && fs.statSync(selected).isDirectory()) {
       currentCwd = selected;
@@ -260,19 +271,18 @@ app.post('/api/browse-folder', (req, res) => {
         opencodeWebProcess = null;
         opencodeWebUrl = null;
       }
-      return res.json({ success: true, cwd: currentCwd });
+      return sendBrowse(200, { success: true, cwd: currentCwd });
     }
     // No valid selection: user cancelled, or the dialog process failed.
     if (code !== 0 && stderrData.trim()) {
-      return res.json({ success: false, canceled: true, cwd: currentCwd, error: stderrData.trim() });
+      return sendBrowse(200, { success: false, canceled: true, cwd: currentCwd, error: stderrData.trim() });
     }
-    return res.json({ success: false, canceled: true, cwd: currentCwd });
+    return sendBrowse(200, { success: false, canceled: true, cwd: currentCwd });
   });
 
   child.on('error', (err) => {
     clearTimeout(timer);
-    isBrowsingFolder = false;
-    return res.status(500).json({ error: err.message });
+    return sendBrowse(500, { error: err.message });
   });
 });
 
@@ -382,7 +392,7 @@ app.post('/api/opencode/web/start', async (req, res) => {
   exec('opencode service start', async () => {
     for (let i = 0; i < 5; i++) {
       await new Promise(r => setTimeout(r, 400));
-      if (await checkHttpReachable(45278)) {
+      if ((await probeOpenCodeWeb(45278)).isOpenCode) {
         opencodeWebUrl = 'http://127.0.0.1:45278/';
         return res.json({ success: true, url: opencodeWebUrl });
       }
@@ -524,6 +534,9 @@ app.post('/api/opencode/run', (req, res) => {
   const { prompt, model } = req.body;
   if (!prompt) {
     return res.status(400).send('Prompt is required');
+  }
+  if (model && !/^[\w./-]+$/.test(model)) {
+    return res.status(400).send('Invalid model');
   }
 
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
