@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="my" class="notranslate" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google" content="notranslate">
+  <meta name="robots" content="notranslate">
+  <meta http-equiv="Content-Language" content="my">
+  <title>Myanmar OpenCode Terminal - မြန်မာစာ Terminal</title>
+  
+  <!-- Fallback Webfont for Myanmar Unicode -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/css/xterm.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="notranslate" translate="no">
+
+  <!-- App Header -->
+  <header class="app-header notranslate" translate="no">
+    <div class="header-left">
+      <div class="app-brand notranslate">
+        <span>🇲🇲 OpenCode Terminal</span>
+        <span class="brand-badge">မြန်မာ</span>
+      </div>
+      <nav class="nav-tabs notranslate">
+        <button class="tab-btn active notranslate" data-tab="terminal">
+          <span>🖥️ Terminal</span>
+        </button>
+        <button class="tab-btn notranslate" data-tab="webui">
+          <span>🌐 OpenCode Web UI</span>
+        </button>
+        <button class="tab-btn notranslate" data-tab="runner">
+          <span>⚡ AI Prompt စနစ်</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="header-center notranslate">
+      <div class="cwd-bar notranslate" title="လက်ရှိ အလုပ်လုပ်နေသော ဖိုဒါ လမ်းကြောင်း">
+        <span class="cwd-icon">📁</span>
+        <span id="current-cwd" class="cwd-path">Loading...</span>
+        <button id="btn-change-folder" class="tool-chip notranslate" style="margin-left: auto; padding: 2px 8px;">ပြောင်းရန်</button>
+      </div>
+    </div>
+
+    <div class="header-right notranslate">
+      <div id="opencode-status" class="status-pill notranslate">
+        <span class="status-dot"></span>
+        <span id="status-text">OpenCode အသင့်ရှိပါသည်</span>
+      </div>
+      <button id="btn-start-opencode" class="action-btn btn-primary notranslate" title="OpenCode ကို စတင်မည်">
+        <span>🚀 OpenCode စတင်မည်</span>
+      </button>
+      <button id="btn-open-settings" class="action-btn notranslate" title="ဖောင့်နှင့် အပြင်အဆင်">
+        <span>⚙️ ဖောင့်/အပြင်အဆင်</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Body Content -->
+  <main class="app-body notranslate" translate="no">
+    
+    <!-- Tab 1: Terminal with Burmese Composer -->
+    <section id="pane-terminal" class="tab-pane active notranslate">
+      
+      <!-- Terminal Quick Toolbar -->
+      <div class="notranslate" style="background: #11151c; border-bottom: 1px solid var(--border-color); padding: 5px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span>Shell:</span>
+          <select id="shell-select" class="notranslate" style="background: var(--bg-tertiary); color: #fff; border: 1px solid var(--border-color); border-radius: 4px; padding: 2px 6px; font-size: 12px;">
+            <option value="powershell" selected>PowerShell (ConPTY / UTF-8)</option>
+            <option value="cmd">Command Prompt (CMD)</option>
+          </select>
+          <button id="btn-ctrl-c" class="tool-chip notranslate" style="color: #ff7b72;" title="Cancel running command or input">⛔ ရပ်မည် (Ctrl+C)</button>
+          <button id="btn-esc-key" class="tool-chip notranslate" style="color: #e3b341;" title="Popup / Dialog များ ပိတ်ရန် (Esc)">⎋ Popup ပိတ်မည် (Esc)</button>
+          <button id="btn-ctrl-l" class="tool-chip notranslate" title="TUI Screen ပြန်လည်ဆွဲသားရန် (Ctrl+L)">✨ Screen ပြင်မည် (Ctrl+L)</button>
+          <button id="btn-clear-term" class="tool-chip notranslate">🧹 Terminal ရှင်းမည်</button>
+          <button id="btn-restart-term" class="tool-chip notranslate">🔄 ပြန်စမည်</button>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; color: #58a6ff;">
+          <span>💡 အကြံပြုချက်: OpenCode တွင် မေးလိုသည်များကို အောက်ပါ Composer အကွက်ထဲတွင် မြန်မာလို ရိုက်ထည့်ပြီး Enter နှိပ်ပါ</span>
+        </div>
+      </div>
+
+      <!-- Main xterm.js Container -->
+      <div id="terminal-container" class="notranslate"></div>
+
+      <!-- Burmese Prompt Composer Dock -->
+      <div class="burmese-composer-dock notranslate" translate="no">
+        <div class="composer-toolbar notranslate">
+          <div class="composer-title notranslate">
+            <span>✏️ မြန်မာစာ Prompt ရိုက်ရန်</span>
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(KeyMagic / Windows Myanmar Unicode အထူးပြု)</span>
+          </div>
+
+          <!-- Quick Burmese Characters for Easy Typing -->
+          <div class="quick-chars notranslate" title="နှိပ်၍ အမြန်ထည့်သွင်းရန်">
+            <span style="font-size: 11px; color: var(--text-muted);">အမြန်စာလုံး:</span>
+            <button class="char-btn notranslate" data-char="ဉ">ဉ</button>
+            <button class="char-btn notranslate" data-char="ည">ည</button>
+            <button class="char-btn notranslate" data-char="ဠ">ဠ</button>
+            <button class="char-btn notranslate" data-char="ၐ">ၐ</button>
+            <button class="char-btn notranslate" data-char="၊">၊</button>
+            <button class="char-btn notranslate" data-char="။">။</button>
+            <button class="char-btn notranslate" data-char="၌">၌</button>
+            <button class="char-btn notranslate" data-char="၍">၍</button>
+            <button class="char-btn notranslate" data-char="၎">၎</button>
+            <button class="char-btn notranslate" data-char="၏">၏</button>
+          </div>
+
+          <!-- Quick Burmese AI Prompt Templates -->
+          <div style="display: flex; align-items: center; gap: 6px;" class="notranslate">
+            <span style="font-size: 12px; color: var(--text-muted);">နမူနာ မေးခွန်းများ:</span>
+            <select id="prompt-templates" class="templates-dropdown notranslate">
+              <option value="">-- နမူနာ မေးခွန်းများ ရွေးချယ်ရန် --</option>
+              <option value="ဒီ project မှာ ဘာတွေရှိလဲ အကျဉ်းချုပ် ရှင်းပြပေးပါ">🔍 Project အကျဉ်းချုပ် မေးမည်</option>
+              <option value="ဒီ project မှာ ဖြစ်နေတဲ့ error တွေကို စစ်ဆေးပြီး ဘယ်လိုပြင်ရမလဲ ပြောပြပါ">🐛 Error စစ်ဆေးပြီး ဖြေရှင်းနည်းမေးမည်</option>
+              <option value="ဒီ code တွေကို ပိုမို clean ဖြစ်ပြီး performance ကောင်းအောင် refactor လုပ်ပေးပါ">⚡ Code Refactoring လုပ်ခိုင်းမည်</option>
+              <option value="ဒီ function/file အတွက် မြန်မာလို ရှင်းလင်းချက်နဲ့ code comments တွေ ထည့်ပေးပါ">📝 မြန်မာလို Documentation / Comments ထည့်မည်</option>
+              <option value="ဒီ code အတွက် unit tests တွေ ရေးပေးပါ">🧪 Unit Test များ ရေးခိုင်းမည်</option>
+              <option value="ဒီ codebase မှာ security အားနည်းချက်တွေ ရှိမရှိ စစ်ဆေးပေးပါ">🛡️ Security အားနည်းချက် စစ်ဆေးမည်</option>
+              <option value="opencode မှာ အသုံးများတဲ့ CLI command တွေနဲ့ tips တွေကို ရှင်းပြပေးပါ">❓ OpenCode သုံးနည်း အကူအညီ</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- The Burmese Input Area -->
+        <div class="composer-input-wrapper notranslate">
+          <textarea id="burmese-prompt-input" class="notranslate" rows="2" placeholder="OpenCode ထံ မေးလိုသည်များကို ဤနေရာတွင် မြန်မာလို လွတ်လပ်စွာ ရိုက်ထည့်ပါ... (Enter သို့မဟုတ် Ctrl+Enter နှိပ်၍ ပို့ပါ)"></textarea>
+        </div>
+
+        <!-- Bottom Actions & Tools -->
+        <div class="composer-bottom-bar notranslate">
+          <div class="bottom-left-tools notranslate">
+            <span id="char-counter" class="notranslate">0 စာလုံး</span>
+            <span style="color: var(--border-color);">|</span>
+            <button id="btn-fix-zawgyi" class="tool-chip notranslate" title="Zawgyi စာသားကို Unicode အဖြစ် အလိုအလျောက် ပြောင်းပေးမည်">
+              <span>🔄 Zawgyi ပြင်မည်</span>
+            </button>
+            <button id="btn-show-history" class="tool-chip notranslate" title="ယခင် မေးမြန်းခဲ့သော မှတ်တမ်းများ">
+              <span>📜 မှတ်တမ်း</span>
+            </button>
+            <label class="notranslate" style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="enter-to-send" checked>
+              <span>Enter ဖြင့် တိုက်ရိုက်ပို့မည်</span>
+            </label>
+          </div>
+
+          <div class="bottom-right-actions notranslate">
+            <button id="btn-clear-prompt" class="action-btn notranslate" style="padding: 5px 10px;">
+              <span>🧹 ရှင်းမည်</span>
+            </button>
+            <button id="btn-copy-prompt" class="action-btn notranslate" style="padding: 5px 10px;">
+              <span>📋 Copy</span>
+            </button>
+            <button id="btn-send-prompt" class="send-btn notranslate">
+              <span>🚀 OpenCode သို့ ပို့မည် (Ctrl+Enter)</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Tab 2: OpenCode Web UI -->
+    <section id="pane-webui" class="tab-pane notranslate">
+      <div class="webui-frame-container notranslate">
+        <div class="webui-toolbar notranslate">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-weight: 600; font-size: 14px;">🌐 OpenCode Official Web Interface</span>
+            <span id="webui-server-badge" class="tool-chip notranslate" style="color: var(--accent-gold);">စတင်ရန် စောင့်ဆိုင်းနေပါသည်</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-toggle-web-server" class="action-btn btn-blue notranslate">
+              <span>▶️ Web Server စတင်မည်</span>
+            </button>
+            <button id="btn-open-external-browser" class="action-btn notranslate">
+              <span>↗️ Browser တွင် ဖွင့်မည်</span>
+            </button>
+            <button id="btn-reload-webui" class="action-btn notranslate">
+              <span>🔄 Refresh</span>
+            </button>
+          </div>
+        </div>
+        <!-- Model Hint Bar for OpenCode Web UI -->
+        <div class="webui-tip-bar notranslate" style="background: rgba(88, 166, 255, 0.08); border-bottom: 1px solid rgba(88, 166, 255, 0.2); padding: 8px 16px; font-size: 12px; display: flex; align-items: center; justify-content: space-between; color: #58a6ff; flex-wrap: wrap; gap: 8px;">
+          <span>💡 <strong>Free Model အားလုံး ရှာဖွေရန်-</strong> Web UI အောက်ခြေရှိ Model အမည်ကို နှိပ်ပြီး Search အကွက်တွင် <strong>"free"</strong> ဟု ရိုက်ရှာပါက အခမဲ့ Model (၉) မျိုးစလုံး (DeepSeek, GLM, Nemotron, MiMo စသည်) အပြည့်အစုံ ပေါ်လာပါမည်။</span>
+          <span style="background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3); border-radius: 4px; padding: 2px 8px; font-size: 11px;">100% Free • $0.00 Spent</span>
+        </div>
+        <!-- Pairing Link Helper for OpenCode 2.0 -->
+        <div id="webui-pairing-bar" class="notranslate" style="background: rgba(35, 134, 54, 0.15); border-bottom: 1px solid rgba(56, 139, 253, 0.3); padding: 8px 16px; font-size: 12px; display: flex; align-items: center; justify-content: space-between; color: #f0f6fc; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+            <span style="color: #58a6ff; font-weight: 600;">🔗 OpenCode 2.0 ချိတ်ဆက်ရန် (Pairing Link):</span>
+            <input id="input-pair-link" readonly class="notranslate" style="background: var(--bg-tertiary); color: #7ee787; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 10px; font-size: 11px; width: 360px; font-family: var(--font-mono);" value="Pairing Link ရယူနေပါသည်...">
+            <button id="btn-copy-pair-link" class="action-btn notranslate" style="padding: 4px 12px; font-size: 12px; background: #238636; color: #fff; font-weight: 500;">📋 Pairing Link ကူးယူမည်</button>
+          </div>
+          <span style="color: var(--text-muted); font-size: 11px;">💡 အောက်ပါ <em>Pairing Link</em> အကွက်ထဲတွင် Paste ချပြီး <strong>Connect</strong> ကို နှိပ်ပါ</span>
+        </div>
+        <div id="webui-placeholder" class="notranslate" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--text-muted);">
+          <div style="font-size: 48px;">🌐</div>
+          <h3 style="color: #fff;">OpenCode Web Interface ကို အသုံးပြုနိုင်ပါသည်</h3>
+          <p style="max-width: 480px; text-align: center; line-height: 1.6;">
+            OpenCode ၏ Graphical Web UI ဖြင့် စာရိုက်၍ မေးမြန်းနိုင်ပါသည်။
+          </p>
+          <button id="btn-start-webui-now" class="action-btn btn-primary notranslate" style="padding: 10px 24px; font-size: 15px;">
+            🚀 OpenCode Web UI ဖွင့်မည်
+          </button>
+        </div>
+        <iframe id="webui-iframe" class="webui-frame" style="display: none;" src="about:blank"></iframe>
+      </div>
+    </section>
+
+    <!-- Tab 3: Direct AI Prompt Runner -->
+    <section id="pane-runner" class="tab-pane notranslate">
+      <div class="runner-container notranslate">
+        <!-- Sidebar for Models & Quick Runs -->
+        <aside class="runner-sidebar notranslate">
+          <h4 style="font-size: 14px; font-weight: 600; color: #fff;">🤖 Model ရွေးချယ်မှု</h4>
+          <select id="runner-model-select" class="setting-input notranslate" style="width: 100%;">
+            <option value="opencode/gemini-3.8-flash" selected>Gemini 3.8 Flash (မြန်ဆန်)</option>
+            <option value="opencode/gemini-3.1-pro">Gemini 3.1 Pro (ဉာဏ်ရည်မြင့်)</option>
+            <option value="opencode/claude-sonnet-4-6">Claude Sonnet 4.6 (Coding အထူး)</option>
+            <option value="opencode/claude-opus-4-7">Claude Opus 4.7</option>
+            <option value="opencode/gpt-5.4">GPT-5.4</option>
+            <option value="opencode/deepseek-v4.1-flash">DeepSeek V4.1 Flash</option>
+            <option value="opencode/qwen3.8-max">Qwen 3.8 Max</option>
+          </select>
+
+          <h4 style="font-size: 14px; font-weight: 600; color: #fff; margin-top: 10px;">📜 မကြာသေးမီက မေးခွန်းများ</h4>
+          <div id="runner-history-container" class="runner-history-list notranslate">
+            <!-- Populated by JS -->
+          </div>
+        </aside>
+
+        <!-- Runner Main Stream Area -->
+        <div class="runner-main notranslate">
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="runner-prompt-input" class="setting-input notranslate" style="flex: 1; font-size: 15px; padding: 10px 14px;" placeholder="မြန်မာလို မေးလိုသည်ကို ရိုက်ထည့်ပါ (ဥပမာ: Python ဖြင့် Calculator တစ်ခု ရေးပေးပါ)...">
+            <button id="btn-run-ai-prompt" class="action-btn btn-primary notranslate" style="padding: 10px 20px;">
+              <span>⚡ စတင်မေးမည်</span>
+            </button>
+          </div>
+
+          <div id="runner-output-box" class="runner-output-box notranslate">
+            <div style="color: var(--text-muted); text-align: center; margin-top: 40px;">
+              <span>အထက်ပါအကွက်တွင် မြန်မာလို ရိုက်ထည့်ပြီး "စတင်မေးမည်" ကို နှိပ်ပါ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Folder Change Modal -->
+  <div id="modal-folder" class="modal-overlay notranslate">
+    <div class="modal-box notranslate">
+      <div class="modal-header notranslate">
+        <span>📁 Workspace Folder ရွေးချယ်ခြင်း</span>
+        <button class="close-btn" data-close="modal-folder">&times;</button>
+      </div>
+      <div class="modal-body notranslate">
+        <p style="font-size: 13px; color: var(--text-muted);">
+          OpenCode အသုံးပြုလိုသည့် Project Folder လမ်းကြောင်း (Path) ကို ထည့်သွင်းပါ:
+        </p>
+        <input type="text" id="folder-input-path" class="setting-input notranslate" style="width: 100%; font-family: var(--font-mono);" placeholder="C:\Users\...\MyProject">
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button class="action-btn notranslate" data-close="modal-folder">မလုပ်တော့ပါ</button>
+          <button id="btn-confirm-folder" class="action-btn btn-primary notranslate">ပြောင်းလဲမည်</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="modal-settings" class="modal-overlay notranslate">
+    <div class="modal-box notranslate">
+      <div class="modal-header notranslate">
+        <span>⚙️ ဖောင့်နှင့် စာလုံး အပြင်အဆင်</span>
+        <button class="close-btn" data-close="modal-settings">&times;</button>
+      </div>
+      <div class="modal-body notranslate">
+        <div class="setting-row notranslate">
+          <span>Terminal စာလုံးပုံစံ (Font):</span>
+          <select id="setting-font-family" class="setting-input notranslate">
+            <option value="'Cascadia Code', 'Consolas', 'Pyidaungsu', 'Myanmar Text', 'Noto Sans Myanmar', monospace" selected>Cascadia Code + Pyidaungsu (စံနှုန်း)</option>
+            <option value="'Consolas', 'Cascadia Code', 'Myanmar Text', 'Pyidaungsu', monospace">Consolas + Myanmar Text</option>
+            <option value="'Cascadia Code', 'Noto Sans Myanmar', 'Pyidaungsu', monospace">Cascadia Code + Noto Sans Myanmar</option>
+          </select>
+        </div>
+
+        <div class="setting-row notranslate">
+          <span>စာလုံးအရွယ်အစား (Font Size):</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="range" id="setting-font-size" min="12" max="22" value="15">
+            <span id="font-size-val" style="width: 40px; text-align: right; font-family: var(--font-mono);">15px</span>
+          </div>
+        </div>
+
+        <div class="setting-row notranslate">
+          <span>စာကြောင်းအကွာအဝေး (Line Height):</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="range" id="setting-line-height" min="1.2" max="1.8" step="0.05" value="1.45">
+            <span id="line-height-val" style="width: 40px; text-align: right; font-family: var(--font-mono);">1.45</span>
+          </div>
+        </div>
+
+        <div class="setting-row notranslate">
+          <span>Color Theme:</span>
+          <select id="setting-theme" class="setting-input notranslate">
+            <option value="dark" selected>GitHub Dark (ပုံမှန်)</option>
+            <option value="cyberpunk">Cyberpunk Neon</option>
+            <option value="monokai">Monokai Pro</option>
+            <option value="solarized">Solarized Dark</option>
+          </select>
+        <hr style="border-color: var(--border-color); margin: 8px 0;">
+        <h4 style="font-size: 13px; color: #58a6ff; font-weight: 600;">🔑 AI Provider API Keys (မိမိပိုင် Key သုံးလိုပါက)</h4>
+        <div class="setting-row notranslate">
+          <span>Gemini API Key:</span>
+          <input type="password" id="setting-gemini-key" class="setting-input notranslate" style="width: 220px;" placeholder="AIzaSy...">
+        </div>
+        <div class="setting-row notranslate">
+          <span>DeepSeek API Key:</span>
+          <input type="password" id="setting-deepseek-key" class="setting-input notranslate" style="width: 220px;" placeholder="sk-...">
+        </div>
+        <p style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+          💡 OpenCode တွင် အခမဲ့ သုံးလိုပါက Web UI အောက်ခြေ Model နေရာတွင် <b>Free</b> ဟု ပါသော Model (ဥပမာ <code>DeepSeek V4.1 Flash Free</code>) ကို ရွေးချယ်ပေးပါ။
+        </p>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button id="btn-save-settings" class="action-btn btn-primary notranslate">သိမ်းဆည်းမည်</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="modal-history" class="modal-overlay notranslate">
+    <div class="modal-box notranslate" style="max-width: 600px;">
+      <div class="modal-header notranslate">
+        <span>📜 မေးမြန်းခဲ့သော မြန်မာ Prompt မှတ်တမ်းများ</span>
+        <button class="close-btn" data-close="modal-history">&times;</button>
+      </div>
+      <div class="modal-body notranslate">
+        <div id="prompt-history-list" class="notranslate" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Populated by JS -->
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+          <button id="btn-clear-all-history" class="action-btn notranslate" style="color: #f85149;">
+            <span>🗑️ မှတ်တမ်း အားလုံးဖျက်မည်</span>
+          </button>
+          <button class="action-btn notranslate" data-close="modal-history">ပိတ်မည်</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="notranslate"></div>
+
+  <!-- Scripts -->
+  <script src="/js/xterm.js"></script>
+  <script src="/js/xterm-addon-fit.js"></script>
+  <script src="/js/addon-unicode11.js"></script>
+  <script src="/js/converter.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
