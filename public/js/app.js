@@ -3,6 +3,11 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Must match API_VERSION in server.js. If the running backend is older (e.g. the
+  // server was left running from a previous version) the UI says so instead of
+  // throwing cryptic parse errors.
+  const EXPECTED_API_VERSION = 4;
+
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
   const burmeseInput = document.getElementById('burmese-prompt-input');
@@ -644,7 +649,15 @@ try {
     // 'THIS_PC' asks the server for the drive roots; a real path lists its sub-folders.
     const query = '?path=' + encodeURIComponent(targetPath || 'THIS_PC');
     fetch('/api/list-dirs' + query)
-      .then(r => r.json())
+      .then(r => {
+        const contentType = r.headers.get('content-type') || '';
+        // An old server answers /api/* with the HTML page (or a plain 404), which
+        // used to surface as "Unexpected token '<' ... is not valid JSON".
+        if (r.status === 404 || !contentType.includes('application/json')) {
+          throw new Error('SERVER_OUTDATED');
+        }
+        return r.json();
+      })
       .then(data => {
         if (data.error) {
           fbListEl.innerHTML = `<div style="color:#ff7b72;padding:10px;">${escapeHtml(data.error)}</div>`;
@@ -659,6 +672,15 @@ try {
         renderFolderList(data.dirs || []);
       })
       .catch(err => {
+        if (err.message === 'SERVER_OUTDATED') {
+          fbListEl.innerHTML = '<div style="color:#f5b942;padding:10px;line-height:1.8;">'
+            + '⚠️ Server သည် ဗားရှင်းဟောင်း ဖြစ်နေပါသည်။<br>'
+            + 'App ကို ပိတ်ပြီး <b>Start-Terminal.bat</b> (သို့မဟုတ် Desktop icon) ကို ပြန်ဖွင့်ပါ။<br>'
+            + '<button id="btn-fb-restart-hint" class="action-btn" style="margin-top:8px;">🔄 ပြန်လည် ရယူမည်</button></div>';
+          const retryBtn = document.getElementById('btn-fb-restart-hint');
+          if (retryBtn) retryBtn.onclick = () => loadFolderBrowser(targetPath);
+          return;
+        }
         fbListEl.innerHTML = `<div style="color:#ff7b72;padding:10px;">Error: ${escapeHtml(err.message)}</div>`;
       });
   }
@@ -1130,6 +1152,11 @@ try {
   fetch('/api/status')
     .then(r => r.json())
     .then(data => {
+      if (data.apiVersion !== EXPECTED_API_VERSION) {
+        // A server left running from an older version does not know the new API
+        // routes; tell the user instead of letting calls fail with parse errors.
+        showToast('⚠️ Server ဗားရှင်းဟောင်း ဖြစ်နေပါသည်။ App ကို ပိတ်ပြီး ပြန်ဖွင့်ပါ');
+      }
       if (data.opencodeInstalled) {
         document.getElementById('status-text').textContent = `OpenCode v${data.version || '1.4'} အသင့်ရှိပါသည်`;
       } else {

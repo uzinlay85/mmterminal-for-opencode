@@ -30,6 +30,13 @@ const wss = new WebSocket.Server({
 });
 
 const PORT = process.env.PORT || 3820;
+
+// Bumped whenever the HTTP API surface changes. The frontend compares this with
+// its own expectation so a long-running (stale) server is detected instead of
+// failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
+// parses this same line to decide whether a running server needs a restart.
+const API_VERSION = 4;
+
 let currentCwd = process.cwd();
 
 // Background OpenCode Web process tracking
@@ -115,6 +122,7 @@ exec('opencode --version', (err, stdout) => {
 // API: System & OpenCode Status
 app.get('/api/status', (req, res) => {
   res.json({
+    apiVersion: API_VERSION,
     opencodeInstalled: cachedOpenCode.installed,
     version: cachedOpenCode.version,
     path: cachedOpenCode.path,
@@ -652,6 +660,15 @@ app.post('/api/opencode/run', (req, res) => {
     try {
       runner.kill();
     } catch (e) {}
+  });
+});
+
+// Any unmatched /api/* route answers with JSON (never the HTML index page) so the
+// browser can tell "endpoint missing" apart from "server unreachable".
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    error: 'Unknown API endpoint: ' + req.originalUrl,
+    apiVersion: API_VERSION
   });
 });
 

@@ -160,6 +160,7 @@ opencode auth list      # သိမ်းဆည်းထားသော credenti
 | `Insufficient account funds` | Free Model သို့ ပြောင်းပေးပါ (`DeepSeek V4.1 Flash Free`) |
 | Web UI ပွင့်မလာခြင်း | `🔄 Refresh` ခလုတ်ကို နှိပ်ပါ (port 45278) |
 | `node-pty` build မအောင်မြင်ခြင်း | Visual Studio C++ Build Tools တပ်ဆင်ပြီး `npm install` ပြန် run ပါ |
+| `📂 Browse` နှိပ်လျှင် `... is not valid JSON` / Server ဗားရှင်းဟောင်း ဆိုသော error | Server ဟောင်း (Node process) က port 3820 ကို ဆွဲထားဆဲ ဖြစ်သည်။ App ကို ပိတ်ပြီး **`Start-Terminal.bat`** (သို့မဟုတ် Desktop icon) ကို ပြန်ဖွင့်ပါ — launcher က server ဟောင်းကို အလိုအလျောက် ရပ်ပြီး အသစ် ပြန်စပေးပါသည် |
 
 ---
 

@@ -16,11 +16,10 @@ if %errorlevel% neq 0 (
 netstat -ano | findstr :3820 >nul 2>nul
 if %errorlevel% neq 0 (
     echo [INFO] Starting Node.js server...
-    start "MyanmarOpenCodeServer" /min node server.js
-    timeout /t 2 /nobreak > nul
 ) else (
-    echo [INFO] Server is already running.
+    echo [INFO] Checking running server version...
 )
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ensure_server.ps1"
 
 set EDGE_EXE=
 if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" set "EDGE_EXE=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
