@@ -76,6 +76,65 @@ OpenCode Web UI အောက်ခြေ Model နေရာတွင် `free` �
 
 ---
 
+## 🔐 OpenCode 2 ဝင်ရောက်ခြင်း (Login)
+
+OpenCode 2 (v2.0.31+) တွင် အခမဲ့ Model များကို အသုံးပြုရန် သို့မဟုတ် မိမိပိုင် Provider (OpenAI, Anthropic, Google, စသည်) ကို ချိတ်ဆက်ရန် `opencode auth login` ကို အသုံးပြုပါ။
+
+### အခြေခံ Login (OpenCode Console — အခမဲ့ Model များအတွက်)
+```powershell
+opencode auth login
+```
+1. စာရင်းထဲမှ **`OpenCode Console`** ကို ရွေးချယ်ပါ။
+2. Method အဖြစ် **`Personal`** (သို့မဟုတ်) **`API key`** ကို ရွေးပါ။
+3. Browser ပွင့်လာပါက OpenCode account ဖြင့် Sign in လုပ်ပါ (သို့မဟုတ်) API key ကို paste ချပါ။
+4. ပြီးဆုံးပါက Terminal တွင် `opencode auth list` ဖြင့် စစ်ဆေးနိုင်ပါသည်။
+
+### အခြား Provider များ (OpenAI, Anthropic, Google, စသည်) ချိတ်ဆက်ခြင်း
+```powershell
+opencode auth login openai
+opencode auth login anthropic
+opencode auth login google
+```
+သို့မဟုတ် `opencode auth login` ကို run ပြီး စာရင်းထဲမှ လိုချင်သော Provider ကို ရွေးချယ်ပါ။ Browser OAuth သို့မဟုတ် API key paste ဖြင့် ဝင်ရောက်နိုင်ပါသည်။
+
+### Account ပြောင်းလဲ/ထွက်ခြင်း
+```powershell
+opencode auth switch   # account ပြောင်းရန်
+opencode auth logout    # ထွက်ရန်
+opencode auth list      # သိမ်းဆည်းထားသော credential များ ကြည့်ရန်
+```
+
+> 💡 **မှတ်ချက်-** အခမဲ့ Model များ (`*-free`) ကို အသုံးပြုရန် OpenCode Console account (Personal) တစ်ခုသာ လိုအပ်ပါသည်။ ငွေကြေး ပေးဆောင်ရန် မလိုပါ။
+
+---
+
+## 🆓 လက်ရှိ OpenCode Free Model များနှင့် လုပ်ဆောင်နိုင်စွမ်း
+
+> ⚠️ Free Model စာရင်းသည် အချိန်အလိုက် ပြောင်းလဲနိုင်ပါသည်။ နောက်ဆုံးစာရင်းကို Terminal တွင် `opencode models` ဖြင့် စစ်ဆေးနိုင်ပါသည်။
+
+| Model ID | အမျိုးအစား | အဓိက လုပ်ဆောင်နိုင်စွမ်း | သင့်တော်သော အသုံးပြုမှု |
+|---|---|---|---|
+| `opencode/deepseek-v4.1-flash-free` | Flash (MoE) | မြန်ဆန်၊ 200K context (free tier), reasoning + coding ကောင်း၊ text+image | ကုဒ်ရေးခြင်း၊ debug, ကြီးမားသော codebase ဖတ်ရှုခြင်း |
+| `opencode/glm-5.3-flash-free` | Flash | ပေါ့ပါး မြန်ဆန်၊ နေ့စဉ် coding task များအတွက် သင့်တော် | အမြန်မေးမြန်းခြင်း၊ refactor, comment ထည့်ခြင်း |
+| `opencode/nemotron-3-ultra-free` | Reasoning | NVIDIA Nemotron, အားကောင်းသော reasoning/coding | ရှုပ်ထွေးသော ပြဿနာများ၊ architecture ဆွေးနွေးခြင်း |
+| `opencode/nemotron-3.5-lightning-free` | Lightning | အလွန်မြန်ဆန်၊ ပေါ့ပါး (limited time) | အမြန်အဖြေ၊ autocomplete ဆန်သော အသုံး |
+| `opencode/nemotron-3.5-super-vl-free` | Vision-Language | 1M context, text+image+document+GUI screenshot နားလည်၊ reasoning | UI/Design စစ်ဆေးခြင်း၊ ပုံ/စာရွက်စာတမ်း ခွဲခြမ်းစိတ်ဖြာခြင်း |
+| `opencode/mimo-v2.6-flash-free` | Flash | Xiaomi MiMo, မြန်ဆန် ပေါ့ပါး | အမြန် code ပြင်ဆင်ခြင်း၊ သေးငယ်သော task |
+| `opencode/longcat-2.5-preview-free` | Preview | Meituan LongCat, preview (limited time) | စမ်းသပ်အသုံးပြုခြင်း |
+| `opencode/big-pickle` | Stealth | အထွေထွေ coding ကောင်း (limited time) | နေ့စဉ် coding အထောက်အပံ့ |
+| `opencode/beam-free` | Beam | ပေါ့ပါး အခြေခံ model | ရိုးရှင်းသော မေးမြန်းခြင်း |
+| `opencode/space-bunny-free` | Stealth | Zero-retention (data မသိမ်း) (limited time) | ကိုယ်ရေးအချက်အလက် ထည့်သွင်းရသော အလုပ် |
+
+### ရွေးချယ်အသုံးပြုရန် အကြံပြုချက်
+- **ကုဒ်ရေး/Debug အဓိက** → `deepseek-v4.1-flash-free` သို့မဟုတ် `nemotron-3-ultra-free`
+- **ပုံ/UI/စာရွက်စာတမ်း စစ်ဆေးရန်** → `nemotron-3.5-super-vl-free`
+- **အမြန် ပေါ့ပါး task** → `glm-5.3-flash-free` သို့မဟုတ် `nemotron-3.5-lightning-free`
+- **ကိုယ်ရေးအချက်အလက် ထိန်းသိမ်းလို** → `space-bunny-free`
+
+> 💡 App ထဲရှိ **AI Prompt စနစ် (Tab 3)** သို့မဟုတ် Terminal တွင် `opencode run -m <model>` ဖြင့် မိမိနှစ်သက်ရာ Model ကို ရွေးချယ် အသုံးပြုနိုင်ပါသည်။
+
+---
+
 ## 🧯 ပြဿနာ ဖြေရှင်းနည်း
 
 | ပြဿနာ | ဖြေရှင်းနည်း |
