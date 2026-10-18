@@ -14,8 +14,12 @@ Windows ပေါ်တွင် OpenCode AI ကို မြန်မာစာ 
    - OpenCode AI CLI (`opencode-ai`)
    - C++ Build Tools (node-pty အတွက်)
    - Project dependencies (`npm install`)
+   - OpenCode အခမဲ့ Model Config (`%USERPROFILE%\.config\opencode\opencode.jsonc`)
    - Desktop Shortcut (`Myanmar OpenCode Terminal`)
-4. ပြီးဆုံးပါက Desktop ပေါ်ရှိ **`Myanmar OpenCode Terminal`** icon ကို Double-Click ဖွင့်ပါ။
+4. Installer ၏ အဆုံးတွင် **OpenCode Login** ကို ယခု ဝင်မည်/မဝင်မည် မေးပါမည်။ `y` နှိပ်ပါက **OpenCode Console** (အခမဲ့ Model များအတွက်) ကို Browser ဖြင့် ချိတ်ဆက်နိုင်ပါသည်။
+5. ပြီးဆုံးပါက Desktop ပေါ်ရှိ **`Myanmar OpenCode Terminal`** icon ကို Double-Click ဖွင့်ပါ။
+
+> 🔑 နောက်မှ OpenCode Login ပြန်ဝင်လိုပါက **`Login-OpenCode.bat`** ကို Double-Click လုပ်ပါ။
 
 > 💡 Installer သည် အင်တာနက် လိုအပ်ပါသည်။ ပထမဆုံး run တွင် အချိန် (၅–၁၅ မိနစ်) ကြာနိုင်ပါသည်။
 
@@ -32,6 +36,16 @@ Windows ပေါ်တွင် OpenCode AI ကို မြန်မာစာ 
 ```powershell
 npm install -g opencode-ai
 opencode --version
+```
+
+### OpenCode အခမဲ့ Model Config သတ်မှတ်ခြင်း (Optional)
+`%USERPROFILE%\.config\opencode\opencode.jsonc` ဖိုင်ကို ဖန်တီးပြီး အောက်ပါအတိုင်း ထည့်ပါ (One-Click Installer က ဤဖိုင်ကို အလိုအလျောက် ဖန်တီးပေးပါသည်)-
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode/deepseek-v4.1-flash-free",
+  "update": "disable"
+}
 ```
 
 ### App တပ်ဆင်ခြင်း
@@ -79,6 +93,8 @@ OpenCode Web UI အောက်ခြေ Model နေရာတွင် `free` �
 ## 🔐 OpenCode 2 ဝင်ရောက်ခြင်း (Login)
 
 OpenCode 2 (v2.0.31+) တွင် အခမဲ့ Model များကို အသုံးပြုရန် သို့မဟုတ် မိမိပိုင် Provider (OpenAI, Anthropic, Google, စသည်) ကို ချိတ်ဆက်ရန် `opencode auth login` ကို အသုံးပြုပါ။
+
+> ⚡ အလွယ်ဆုံး- **`Login-OpenCode.bat`** ကို Double-Click လုပ်ပါ (One-Click Installer ၏ အဆုံးတွင်လည်း Login ဝင်ရန် မေးပါသည်)။
 
 ### အခြေခံ Login (OpenCode Console — အခမဲ့ Model များအတွက်)
 ```powershell
@@ -153,7 +169,9 @@ opencode auth list      # သိမ်းဆည်းထားသော credenti
 - `public/` — Frontend (xterm.js + app.js + converter.js)
 - `scripts/` — Launcher, installer, folder picker
 - `test/` — Unit tests (`npm test`)
-- `Install-Terminal.bat` — One-click installer
+- `Install-Terminal.bat` — One-click installer (Node, Git, OpenCode, Build Tools, deps, config, shortcut)
+- `Login-OpenCode.bat` — OpenCode Login အလွယ် ဝင်ရန်
+- `Start-Terminal.bat` — App ဖွင့်ရန်
 
 ---
 

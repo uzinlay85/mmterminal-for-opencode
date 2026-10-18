@@ -641,7 +641,8 @@ try {
 
   function loadFolderBrowser(targetPath) {
     fbListEl.innerHTML = '<div style="color:var(--text-muted);padding:10px;text-align:center;">ဖိုင်တွဲများ ရှာဖွေနေပါသည်...</div>';
-    const query = targetPath ? ('?path=' + encodeURIComponent(targetPath)) : '';
+    // 'THIS_PC' asks the server for the drive roots; a real path lists its sub-folders.
+    const query = '?path=' + encodeURIComponent(targetPath || 'THIS_PC');
     fetch('/api/list-dirs' + query)
       .then(r => r.json())
       .then(data => {

@@ -44,12 +44,25 @@ Windows ပေါ်တွင် **OpenCode AI Assistant** ကို အသု�
 7. **📜 Prompt History (မှတ်တမ်း)**:
    - ယခင်က မေးမြန်းခဲ့ဖူးသော မြန်မာ prompt များကို အချိန်မရွေး ပြန်လည်ကြည့်ရှု အသုံးပြုနိုင်ပါသည်။
 
-8. **📂 Windows Folder Browser GUI (Visual Project Picker)**:
-   - Project ဖိုဒါလမ်းကြောင်းကို လက်ဖြင့် စာရိုက်ထည့်စရာမလိုဘဲ Header ဘားရှိ `📂 Browse` ခလုတ်ကို နှိပ်ကာ Windows File Manager / Folder Dialog ဖြင့် Visual အနေဖြင့် လွယ်ကူစွာ ရှာဖွေရွေးချယ်ပြောင်းလဲနိုင်ပါသည်။
+8. **📂 In-App Folder Browser (Visual Project Picker)**:
+   - Project ဖိုဒါလမ်းကြောင်းကို လက်ဖြင့် စာရိုက်ထည့်စရာမလိုဘဲ Header ဘားရှိ `📂 Browse` ခလုတ်ကို နှိပ်ကာ App အတွင်း Folder Browser (Drive နှင့် ဖိုင်တွဲစာရင်း) ဖြင့် Visual အနေဖြင့် လွယ်ကူစွာ ရှာဖွေရွေးချယ်ပြောင်းလဲနိုင်ပါသည်။
 
 ---
 
 ## 🚀 စတင်အသုံးပြုပုံ (How to Launch)
+
+### ⚙️ ပထမဆုံး တပ်ဆင်ခြင်း (One-Click Setup)
+
+ဤ project folder ထဲရှိ **`Install-Terminal.bat`** ကို Right-click → **Run as administrator** (သို့မဟုတ်) Double-Click နှိပ်လိုက်ရုံဖြင့် အောက်ပါအရာများကို အလိုအလျောက် တပ်ဆင်ပေးပါသည်-
+
+- **OpenCode AI CLI** (`opencode-ai` နောက်ဆုံးဗားရှင်း)
+- Node.js (LTS) နှင့် Git for Windows
+- C++ Build Tools (`node-pty` အတွက်)
+- Project dependencies (`npm install`)
+- OpenCode အခမဲ့ Model Config (`%USERPROFILE%\.config\opencode\opencode.jsonc`)
+- Desktop Shortcut (`Myanmar OpenCode Terminal`)
+
+Installer ၏ အဆုံးတွင် **OpenCode Login** ကို ယခု ဝင်မည်/မဝင်မည် မေးပါမည်။ နောက်မှ ပြန်ဝင်လိုပါက **`Login-OpenCode.bat`** ကို Double-Click လုပ်ပါ။
 
 အောက်ပါ နည်းလမ်းများအနက် အဆင်ပြေရာတစ်ခုဖြင့် စတင်နိုင်ပါသည်:
 

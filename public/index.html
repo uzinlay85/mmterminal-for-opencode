@@ -420,10 +420,12 @@
         <button class="close-btn" data-close="modal-help">&times;</button>
       </div>
       <div class="modal-body notranslate" style="line-height:1.7;font-size:13px;">
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၀။ ပထမဆုံး တပ်ဆင်ခြင်း (One-Click)</h4>
+        <p>Project folder ထဲရှိ <b>Install-Terminal.bat</b> ကို Right-click → Run as administrator ဖြင့် run ပါ။ Node.js, Git, <b>OpenCode AI CLI</b>, Build Tools, project dependencies, အခမဲ့ Model Config နှင့် Desktop Shortcut များကို အလိုအလျောက် တပ်ဆင်ပေးပါမည်။ အဆုံးတွင် <b>OpenCode Login</b> ဝင်ရန် မေးပါမည်။ နောက်မှ ဝင်လိုပါက <b>Login-OpenCode.bat</b> ကို Double-Click လုပ်ပါ။</p>
         <h4 style="color:#58a6ff;margin:8px 0 4px;">၁။ စတင်ခြင်း</h4>
         <p>Desktop ပေါ်ရှိ <b>Myanmar OpenCode Terminal</b> icon (သို့မဟုတ်) <b>Start-Terminal.bat</b> ကို Double-Click ဖွင့်ပါ။ Server စတင်ပြီး Browser (Edge App Mode) အလိုအလျောက် ပွင့်လာပါမည်။</p>
         <h4 style="color:#58a6ff;margin:8px 0 4px;">၂။ Project Folder ရွေးချယ်ခြင်း</h4>
-        <p>Header ရှိ <b>📂 Browse</b> ကို နှိပ်၍ Windows Folder Dialog ဖြင့် Project Folder ရွေးပါ (သို့မဟုတ်) <b>✏️ ရိုက်ထည့်ရန်</b> ဖြင့် path တိုက်ရိုက်ရိုက်ထည့်ပါ။ ယခင်သုံးခဲ့သော Project များကို Modal ထဲရှိ စာရင်းမှ တစ်ချက်နှိပ်၍ ပြန်ဖွင့်နိုင်ပါသည်။</p>
+        <p>Header ရှိ <b>📂 Browse</b> ကို နှိပ်၍ App အတွင်း Folder Browser (Drive/ဖိုင်တွဲ စာရင်း) မှ Project Folder ရွေးပါ (သို့မဟုတ်) <b>✏️ ရိုက်ထည့်ရန်</b> ဖြင့် path တိုက်ရိုက်ရိုက်ထည့်ပါ။ ယခင်သုံးခဲ့သော Project များကို Modal ထဲရှိ စာရင်းမှ တစ်ချက်နှိပ်၍ ပြန်ဖွင့်နိုင်ပါသည်။</p>
         <h4 style="color:#58a6ff;margin:8px 0 4px;">၃။ မြန်မာလို Prompt ရိုက်၍ မေးမြန်းခြင်း</h4>
         <p>အောက်ခြေ <b>Burmese Composer</b> အကွက်တွင် မြန်မာလို ရိုက်ထည့်ပြီး <b>Enter</b> (သို့မဟုတ် <b>Ctrl+Enter</b>) နှိပ်ပါ။ OpenCode ထံသို့ prompt ရောက်ရှိသွားပါမည်။ <b>Shift+Enter</b> ဖြင့် စာကြောင်းအသစ် ဆင်းနိုင်ပါသည်။</p>
         <h4 style="color:#58a6ff;margin:8px 0 4px;">၄။ OpenCode စတင်ခြင်း</h4>
@@ -443,7 +445,7 @@
         <h4 style="color:#58a6ff;margin:8px 0 4px;">၈️⃣ မှတ်တမ်း (History)</h4>
         <p><b>📜 မှတ်တမ်း</b> ခလုတ်ဖြင့် ယခင် prompt များကို ပြန်ကြည့်နိုင်ပါသည်။ Project Folder များကိုလည်း Modal ထဲရှိ စာရင်းမှ ပြန်ဖွင့်နိုင်ပါသည်။</p>
         <h4 style="color:#58a6ff;margin:8px 0 4px;">၉️⃣ OpenCode 2 Login</h4>
-        <p>Terminal တွင် <code>opencode auth login</code> ကို run ပြီး <b>OpenCode Console</b> → <b>Personal</b> ရွေး၍ browser ဖြင့် Sign in လုပ်ပါ (သို့မဟုတ် API key paste ချပါ)။ အခြား Provider များအတွက် <code>opencode auth login openai</code> စသည် သုံးနိုင်ပါသည်။</p>
+        <p>အလွယ်ဆုံး — <b>Login-OpenCode.bat</b> ကို Double-Click လုပ်ပါ (Install-Terminal.bat ၏ အဆုံးတွင်လည်း မေးပါသည်)။ <b>OpenCode Console</b> → <b>Personal</b> ရွေး၍ browser ဖြင့် Sign in လုပ်ပါ (သို့မဟုတ် API key paste ချပါ)။ Terminal မှ တိုက်ရိုက်လုပ်လိုပါက <code>opencode auth login</code>။ အခြား Provider များအတွက် <code>opencode auth login openai</code> စသည် သုံးနိုင်ပါသည်။</p>
         <h4 style="color:#58a6ff;margin:8px 0 4px;">🔟 Free Model များ (အခမဲ့)</h4>
         <p>နောက်ဆုံးစာရင်းကို Terminal တွင် <code>opencode models</code> ဖြင့် စစ်ဆေးပါ။ အသုံးများသော Free Model များ: <b>deepseek-v4.1-flash-free</b> (coding/debug), <b>nemotron-3.5-super-vl-free</b> (image/UI), <b>glm-5.3-flash-free</b> (အမြန် task), <b>space-bunny-free</b> (zero-retention)။ ရွေးချယ်ရန် Tab 3 သို့မဟုတ် <code>opencode run -m &lt;model&gt;</code> သုံးပါ။</p>
       </div>
