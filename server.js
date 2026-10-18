@@ -287,6 +287,71 @@ app.post('/api/browse-folder', (req, res) => {
 });
 
 
+// API: List sub-directories for the in-app folder browser.
+// Reading the local filesystem is safe here because the server only binds to
+// 127.0.0.1 and every /api/* call is origin-checked.
+app.get('/api/list-dirs', (req, res) => {
+  const requested = typeof req.query.path === 'string' && req.query.path.trim()
+    ? req.query.path.trim()
+    : currentCwd;
+
+  // No explicit path: return the list of drive roots (Windows) so the user can start anywhere.
+  if (!requested || requested === 'THIS_PC') {
+    const drives = [];
+    for (let i = 65; i <= 90; i++) {
+      const letter = String.fromCharCode(i) + ':\\';
+      try {
+        if (fs.existsSync(letter)) drives.push({ name: letter, path: letter });
+      } catch (e) {}
+    }
+    return res.json({ path: null, parent: null, dirs: drives });
+  }
+
+  let resolved;
+  try {
+    resolved = path.resolve(requested);
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid path' });
+  }
+
+  let stat;
+  try {
+    stat = fs.statSync(resolved);
+    if (!stat.isDirectory()) {
+      return res.status(400).json({ error: 'Not a directory' });
+    }
+  } catch (e) {
+    return res.status(404).json({ error: 'Folder does not exist' });
+  }
+
+  let entries = [];
+  try {
+    entries = fs.readdirSync(resolved, { withFileTypes: true });
+  } catch (e) {
+    return res.status(403).json({ error: 'Cannot read folder: ' + e.message });
+  }
+
+  const dirs = entries
+    .filter((ent) => {
+      try {
+        if (ent.isDirectory()) return true;
+        // Include junctions/symlinks that point at directories.
+        if (ent.isSymbolicLink()) return fs.statSync(path.join(resolved, ent.name)).isDirectory();
+      } catch (e) {}
+      return false;
+    })
+    .map((ent) => ({ name: ent.name, path: path.join(resolved, ent.name) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const parent = path.dirname(resolved);
+  return res.json({
+    path: resolved,
+    parent: parent === resolved ? null : parent,
+    dirs
+  });
+});
+
+
 function checkHttpReachable(port, host = '127.0.0.1') {
   return new Promise((resolve) => {
     const req = http.request({

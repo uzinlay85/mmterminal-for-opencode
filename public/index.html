@@ -43,7 +43,7 @@
         <span class="cwd-icon">📁</span>
         <span id="current-cwd" class="cwd-path">Loading...</span>
         <div style="display: flex; gap: 4px; margin-left: auto; flex-shrink: 0;">
-          <button id="btn-browse-folder" class="tool-chip notranslate" style="color: #58a6ff; font-weight: 500; padding: 2px 8px;" title="Windows File Explorer ဖြင့် ဖိုဒါရွေးချယ်မည်">📂 Browse</button>
+          <button id="btn-browse-folder" class="tool-chip notranslate" style="color: #58a6ff; font-weight: 500; padding: 2px 8px;" title="Folder Browser ဖြင့် Project Folder ရွေးချယ်မည်">📂 Browse</button>
           <button id="btn-change-folder" class="tool-chip notranslate" style="padding: 2px 8px;" title="ဖိုဒါလမ်းကြောင်း တိုက်ရိုက်ရိုက်ထည့်မည်">✏️ ရိုက်ထည့်ရန်</button>
         </div>
       </div>
@@ -265,6 +265,28 @@
 
   </main>
 
+  <!-- In-App Folder Browser Modal -->
+  <div id="modal-folder-browser" class="modal-overlay notranslate">
+    <div class="modal-box notranslate" style="max-width: 640px;">
+      <div class="modal-header notranslate">
+        <span>📂 Project Folder ရွေးချယ်ခြင်း</span>
+        <button class="close-btn" data-close="modal-folder-browser">&times;</button>
+      </div>
+      <div class="modal-body notranslate">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="btn-fb-up" class="action-btn notranslate" title="အထက်တစ်ဆင့်">⬆️ အထက်</button>
+          <button id="btn-fb-thispc" class="action-btn notranslate" title="Drive များ">💻 This PC</button>
+          <input type="text" id="fb-path" class="setting-input notranslate" style="flex:1;font-family:var(--font-mono);font-size:12px;" readonly>
+        </div>
+        <div id="fb-list" class="notranslate" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;border:1px solid var(--border-color);border-radius:8px;padding:6px;background:var(--bg-primary);"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span id="fb-current" style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"></span>
+          <button id="btn-fb-select" class="action-btn btn-primary notranslate">✅ ဤ Folder ကို ရွေးမည်</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Folder Change Modal -->
   <div id="modal-folder" class="modal-overlay notranslate">
     <div class="modal-box notranslate">
@@ -278,7 +300,7 @@
         </p>
 
         <button id="btn-modal-browse" class="action-btn notranslate" style="width: 100%; margin-bottom: 14px; background: #21262d; border: 1px solid #388bfd; padding: 9px 12px; justify-content: center; font-size: 13px; color: #58a6ff; font-weight: 600; cursor: pointer;">
-          <span>📂 Windows Folder Browser ဖြင့် ရွေးချယ်မည်</span>
+          <span>📂 Folder Browser ဖွင့်မည်</span>
         </button>
 
         <div style="margin-bottom: 12px;">
