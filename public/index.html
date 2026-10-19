@@ -231,14 +231,12 @@
         <aside class="runner-sidebar notranslate">
           <h4 style="font-size: 14px; font-weight: 600; color: #fff;">🤖 Model ရွေးချယ်မှု</h4>
           <select id="runner-model-select" class="setting-input notranslate" style="width: 100%;">
-            <option value="opencode/gemini-3.8-flash" selected>Gemini 3.8 Flash (မြန်ဆန်)</option>
-            <option value="opencode/gemini-3.1-pro">Gemini 3.1 Pro (ဉာဏ်ရည်မြင့်)</option>
-            <option value="opencode/claude-sonnet-4-6">Claude Sonnet 4.6 (Coding အထူး)</option>
-            <option value="opencode/claude-opus-4-7">Claude Opus 4.7</option>
-            <option value="opencode/gpt-5.4">GPT-5.4</option>
-            <option value="opencode/deepseek-v4.1-flash">DeepSeek V4.1 Flash</option>
-            <option value="opencode/qwen3.8-max">Qwen 3.8 Max</option>
+            <option value="">⏳ Model စာရင်း ရယူနေပါသည်...</option>
           </select>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button id="btn-refresh-models" class="action-btn notranslate" style="flex: 0 0 auto;" title="OpenCode မှ Model စာရင်းကို ချက်ချင်း ပြန်လည် ရယူမည်">🔄 ပြန်ယူမည်</button>
+            <span id="runner-model-meta" class="notranslate" style="font-size: 11px; color: var(--text-muted); flex: 1; line-height: 1.5;">Model စာရင်း ရယူနေပါသည်...</span>
+          </div>
 
           <h4 style="font-size: 14px; font-weight: 600; color: #fff; margin-top: 10px;">📜 မကြာသေးမီက မေးခွန်းများ</h4>
           <div id="runner-history-container" class="runner-history-list notranslate">
@@ -447,7 +445,8 @@
         <h4 style="color:#58a6ff;margin:8px 0 4px;">၉️⃣ OpenCode 2 Login</h4>
         <p>အလွယ်ဆုံး — <b>Login-OpenCode.bat</b> ကို Double-Click လုပ်ပါ (Install-Terminal.bat ၏ အဆုံးတွင်လည်း မေးပါသည်)။ <b>OpenCode Console</b> → <b>Personal</b> ရွေး၍ browser ဖြင့် Sign in လုပ်ပါ (သို့မဟုတ် API key paste ချပါ)။ Terminal မှ တိုက်ရိုက်လုပ်လိုပါက <code>opencode auth login</code>။ အခြား Provider များအတွက် <code>opencode auth login openai</code> စသည် သုံးနိုင်ပါသည်။</p>
         <h4 style="color:#58a6ff;margin:8px 0 4px;">🔟 Free Model များ (အခမဲ့)</h4>
-        <p>နောက်ဆုံးစာရင်းကို Terminal တွင် <code>opencode models</code> ဖြင့် စစ်ဆေးပါ။ အသုံးများသော Free Model များ: <b>deepseek-v4.1-flash-free</b> (coding/debug), <b>nemotron-3.5-super-vl-free</b> (image/UI), <b>glm-5.3-flash-free</b> (အမြန် task), <b>space-bunny-free</b> (zero-retention)။ ရွေးချယ်ရန် Tab 3 သို့မဟုတ် <code>opencode run -m &lt;model&gt;</code> သုံးပါ။</p>
+        <p>နောက်ဆုံးစာရင်းကို Terminal တွင် <code>opencode models</code> ဖြင့် စစ်ဆေးပါ။ အသုံးများသော Free Model များ: <b>deepseek-v4.1-flash-free</b> (coding/debug), <b>nemotron-3.5-super-vl-free</b> (image/UI), <b>glm-5.3-flash-free</b> (အမြန် task), <b>minimax-m3.1-flash-free</b>။ ရွေးချယ်ရန် Tab 3 သို့မဟုတ် <code>opencode run -m &lt;model&gt;</code> သုံးပါ။</p>
+        <p>🔄 Tab 3 ၏ Model စာရင်းကို OpenCode မှ <b>တိုက်ရိုက် (live)</b> ရယူပါသည် — Free Model အသစ် ထွက်လာသည်နှင့် စာရင်းထဲ အလိုအလျောက် ပါလာပါမည်။ Free များကို <b>🆓 Free Model များ</b> အုပ်စုတွင် ထိပ်မှ ပြပြီး <b>🔄 ပြန်ယူမည်</b> ခလုတ်ဖြင့် ချက်ချင်း ပြန်လည် ရယူနိုင်ပါသည်။</p>
       </div>
     </div>
   </div>

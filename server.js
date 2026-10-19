@@ -35,7 +35,7 @@ const PORT = process.env.PORT || 3820;
 // its own expectation so a long-running (stale) server is detected instead of
 // failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
 // parses this same line to decide whether a running server needs a restart.
-const API_VERSION = 4;
+const API_VERSION = 5;
 
 let currentCwd = process.cwd();
 
@@ -572,34 +572,72 @@ app.get('/api/opencode/web/pair', (req, res) => {
 
 // API: List models known to the installed OpenCode CLI (used to populate the
 // runner's model picker so it does not drift from the real CLI).
-app.get('/api/models', (req, res) => {
-  const isWin = process.platform === 'win32';
-  const child = isWin
-    ? spawn('cmd.exe', ['/c', 'opencode', 'models'])
-    : spawn('opencode', ['models']);
+//
+// The CLI reports whatever catalogue is live on OpenCode's side, so newly
+// released free models appear here without upgrading anything. Results are cached
+// briefly so the UI can poll often without spawning a CLI process every time.
+const MODELS_CACHE_TTL_MS = 5 * 60 * 1000;
+let modelsCache = { models: [], fetchedAt: 0 };
 
-  let out = '';
-  let answered = false;
-  const finish = (models) => {
-    if (answered) return;
-    answered = true;
-    res.json({ models });
-  };
+// Stealth/preview models that are free but carry no "-free" suffix in their id.
+// Everything else is classified purely from the live id, so new "-free" models
+// need no code change.
+const EXTRA_FREE_MODEL_IDS = new Set(['opencode/big-pickle']);
 
-  child.stdout.on('data', (d) => { out += d.toString(); });
-  child.stderr.on('data', (d) => { out += d.toString(); });
-  child.on('error', () => finish([]));
-  child.on('close', () => {
-    const models = out
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => /^[\w.-]+\/[\w.-]+$/.test(line));
-    finish([...new Set(models)]);
+function isFreeModelId(id) {
+  return /-free$/i.test(id) || EXTRA_FREE_MODEL_IDS.has(id);
+}
+
+function fetchModelsFromCli() {
+  return new Promise((resolve) => {
+    const isWin = process.platform === 'win32';
+    const child = isWin
+      ? spawn('cmd.exe', ['/c', 'opencode', 'models'])
+      : spawn('opencode', ['models']);
+
+    let out = '';
+    let done = false;
+    const finish = (models) => {
+      if (done) return;
+      done = true;
+      resolve(models);
+    };
+
+    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stderr.on('data', (d) => { out += d.toString(); });
+    child.on('error', () => finish([]));
+    child.on('close', () => {
+      const models = out
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => /^[\w.-]+\/[\w.-]+$/.test(line));
+      finish([...new Set(models)]);
+    });
+    setTimeout(() => {
+      try { child.kill(); } catch (e) {}
+      finish([]);
+    }, 8000);
   });
-  setTimeout(() => {
-    try { child.kill(); } catch (e) {}
-    finish([]);
-  }, 8000);
+}
+
+app.get('/api/models', async (req, res) => {
+  const forceRefresh = req.query.refresh === '1';
+  const isFresh = Date.now() - modelsCache.fetchedAt < MODELS_CACHE_TTL_MS;
+
+  if (forceRefresh || !isFresh || !modelsCache.models.length) {
+    const models = await fetchModelsFromCli();
+    // Never let a failed probe wipe a previously known list.
+    if (models.length) {
+      modelsCache = { models, fetchedAt: Date.now() };
+    }
+  }
+
+  res.json({
+    models: modelsCache.models,
+    freeModels: modelsCache.models.filter(isFreeModelId),
+    fetchedAt: modelsCache.fetchedAt,
+    cached: !forceRefresh && isFresh
+  });
 });
 
 // API: Direct AI Prompt Runner (Streams response)

@@ -80,7 +80,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\create_desktop_shortcut.ps1
 
 ## 🆓 အခမဲ့ Model (Free Tier)
 
-OpenCode Web UI အောက်ခြေ Model နေရာတွင် `free` ဟု ရှာဖွေပြီး အခမဲ့ Model (၉) မျိုးကို ရွေးချယ်နိုင်ပါသည် (ဥပမာ `DeepSeek V4.1 Flash Free`)။ ငွေကြေး ပေးဆောင်ရန် မလိုပါ။
+OpenCode Web UI အောက်ခြေ Model နေရာတွင် `free` ဟု ရှာဖွေပြီး အခမဲ့ Model များကို ရွေးချယ်နိုင်ပါသည် (ဥပမာ `DeepSeek V4.1 Flash Free`)။ ငွေကြေး ပေးဆောင်ရန် မလိုပါ။
+
+> 🔄 **Auto Update:** App ရှိ **AI Prompt စနစ် (Tab 3)** ၏ Model စာရင်းကို OpenCode မှ **တိုက်ရိုက် (live)** ရယူပါသည်။ ထို့ကြောင့် Free Model အသစ် ထွက်လာသည်နှင့် စာရင်းထဲ အလိုအလျောက် ပါလာပါသည် (Hardcode မဟုတ်ပါ)။
+> - Free Model များကို **`🆓 Free Model များ`** အုပ်စုတွင် ထိပ်မှ ပြပါသည်
+> - `🔄 ပြန်ယူမည်` ခလုတ်ဖြင့် ချက်ချင်း ပြန်လည် ရယူနိုင်ပါသည်
+> - Runner tab ကို ဖွင့်တိုင်း + ဖွင့်ထားစဉ် ၃၀ မိနစ်တစ်ကြိမ် အလိုအလျောက် refresh လုပ်ပါသည်
+> - စာရင်းဘေးတွင် “🆓 Free Model X ခု · စစ်ဆေးချိန် …” ကို ပြသပါသည်
 
 ---
 
@@ -136,6 +142,7 @@ opencode auth list      # သိမ်းဆည်းထားသော credenti
 | `opencode/nemotron-3.5-lightning-free` | Lightning | အလွန်မြန်ဆန်၊ ပေါ့ပါး (limited time) | အမြန်အဖြေ၊ autocomplete ဆန်သော အသုံး |
 | `opencode/nemotron-3.5-super-vl-free` | Vision-Language | 1M context, text+image+document+GUI screenshot နားလည်၊ reasoning | UI/Design စစ်ဆေးခြင်း၊ ပုံ/စာရွက်စာတမ်း ခွဲခြမ်းစိတ်ဖြာခြင်း |
 | `opencode/mimo-v2.6-flash-free` | Flash | Xiaomi MiMo, မြန်ဆန် ပေါ့ပါး | အမြန် code ပြင်ဆင်ခြင်း၊ သေးငယ်သော task |
+| `opencode/minimax-m3.1-flash-free` | Flash | MiniMax, မြန်ဆန် ပေါ့ပါး | နေ့စဉ် coding၊ မေးခွန်း အမြန်ဖြေ |
 | `opencode/longcat-2.5-preview-free` | Preview | Meituan LongCat, preview (limited time) | စမ်းသပ်အသုံးပြုခြင်း |
 | `opencode/big-pickle` | Stealth | အထွေထွေ coding ကောင်း (limited time) | နေ့စဉ် coding အထောက်အပံ့ |
 | `opencode/beam-free` | Beam | ပေါ့ပါး အခြေခံ model | ရိုးရှင်းသော မေးမြန်းခြင်း |

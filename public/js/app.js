@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Must match API_VERSION in server.js. If the running backend is older (e.g. the
   // server was left running from a previous version) the UI says so instead of
   // throwing cryptic parse errors.
-  const EXPECTED_API_VERSION = 4;
+  const EXPECTED_API_VERSION = 5;
 
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // AI Runner elements
   const runnerModelSelect = document.getElementById('runner-model-select');
+  const runnerModelRefreshBtn = document.getElementById('btn-refresh-models');
+  const runnerModelMeta = document.getElementById('runner-model-meta');
   const runnerPromptInput = document.getElementById('runner-prompt-input');
   const btnRunAiPrompt = document.getElementById('btn-run-ai-prompt');
   const runnerOutputBox = document.getElementById('runner-output-box');
@@ -938,6 +940,9 @@ try {
         checkWebUiStatus();
       } else if (targetTab === 'runner') {
         renderRunnerHistory();
+        // The model catalogue lives on OpenCode's side, so refresh it whenever the
+        // tab is opened — a newly released free model then shows up without a reload.
+        loadModelsFromCli(false);
         runnerPromptInput.focus();
       }
     });
@@ -1174,26 +1179,91 @@ try {
 
   // Populate the runner model picker from the installed OpenCode CLI. Falls back
   // to the static <option> list when the CLI is unavailable or returns nothing.
-  function loadModelsFromCli() {
+  // Remembers the user's last picked model so a refresh does not reset it.
+  const LAST_MODEL_KEY = 'mm_opencode_last_model';
+  const MODELS_AUTO_REFRESH_MS = 30 * 60 * 1000;
+
+  function setModelMeta(text) {
+    if (runnerModelMeta) runnerModelMeta.textContent = text;
+  }
+
+  function loadModelsFromCli(forceRefresh) {
     runnerModelSelect.disabled = true;
-    fetch('/api/models')
+    setModelMeta('⏳ Model စာရင်း ရယူနေပါသည်...');
+
+    fetch('/api/models' + (forceRefresh ? '?refresh=1' : ''))
       .then(r => r.json())
       .then(res => {
         const models = (res && res.models) || [];
-        if (!models.length) { runnerModelSelect.disabled = false; return; }
-        const current = runnerModelSelect.value;
-        runnerModelSelect.innerHTML = '';
+        if (!models.length) {
+          runnerModelSelect.disabled = false;
+          setModelMeta('⚠️ Model စာရင်း မရနိုင်ပါ — OpenCode တပ်ဆင်ထားခြင်း ရှိ/မရှိ စစ်ဆေးပါ');
+          return;
+        }
+
+        // The server classifies free models from their live ids, so new "-free"
+        // models need no code change here.
+        const freeModels = (res && res.freeModels) || [];
+        const freeSet = new Set(freeModels);
+
+        const previous = runnerModelSelect.value;
+        let saved = null;
+        try { saved = localStorage.getItem(LAST_MODEL_KEY); } catch (e) { saved = null; }
+
+        const freeGroup = document.createElement('optgroup');
+        freeGroup.label = '🆓 Free Model များ';
+        const otherGroup = document.createElement('optgroup');
+        otherGroup.label = 'အခြား Model များ';
+
         models.forEach(name => {
           const opt = document.createElement('option');
           opt.value = name;
-          opt.textContent = name;
-          runnerModelSelect.appendChild(opt);
+          opt.textContent = (freeSet.has(name) ? '🆓 ' : '') + name;
+          (freeSet.has(name) ? freeGroup : otherGroup).appendChild(opt);
         });
-        if (models.includes(current)) runnerModelSelect.value = current;
+
+        runnerModelSelect.innerHTML = '';
+        if (freeGroup.childElementCount) runnerModelSelect.appendChild(freeGroup);
+        if (otherGroup.childElementCount) runnerModelSelect.appendChild(otherGroup);
+
+        // Keep the user's choice when it still exists, otherwise prefer the last
+        // saved model, then a free one, then anything.
+        let pick = null;
+        if (models.includes(previous)) pick = previous;
+        else if (saved && models.includes(saved)) pick = saved;
+        else if (freeModels.length) pick = freeModels[0];
+        else pick = models[0];
+        if (pick) runnerModelSelect.value = pick;
+
         runnerModelSelect.disabled = false;
+
+        let when = '';
+        if (res && res.fetchedAt) {
+          try { when = new Date(res.fetchedAt).toLocaleTimeString(); } catch (e) { when = ''; }
+        }
+        setModelMeta(`🆓 Free Model ${freeModels.length} ခု / စုစုပေါင်း ${models.length} ခု` +
+          (when ? ` · စစ်ဆေးချိန် ${when}` : '') +
+          (res && res.cached ? ' (cache)' : ''));
       })
-      .catch(() => { runnerModelSelect.disabled = false; });
+      .catch(() => {
+        runnerModelSelect.disabled = false;
+        setModelMeta('⚠️ Model စာရင်း ရယူမှု မအောင်မြင်ပါ');
+      });
   }
+
+  if (runnerModelRefreshBtn) {
+    runnerModelRefreshBtn.addEventListener('click', () => loadModelsFromCli(true));
+  }
+
+  if (runnerModelSelect) {
+    runnerModelSelect.addEventListener('change', () => {
+      try { localStorage.setItem(LAST_MODEL_KEY, runnerModelSelect.value); } catch (e) {}
+    });
+  }
+
+  // Keep the catalogue warm while the app stays open, so a newly published free
+  // model is already there when the user looks for it.
+  setInterval(() => loadModelsFromCli(true), MODELS_AUTO_REFRESH_MS);
 
   // Startup
   initTerminal();
