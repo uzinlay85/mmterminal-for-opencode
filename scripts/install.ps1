@@ -49,35 +49,78 @@ if (-not (Test-Command "git")) {
     }
 }
 
-# 3. OpenCode AI CLI (always ensure the latest v2)
-Write-Step "OpenCode AI CLI ကို စစ်ဆေးနေပါသည်..."
+# 3. OpenCode AI CLI (v2)
+#
+# IMPORTANT: OpenCode 2 is published as the npm package "@opencode/cli".
+# The older "opencode-ai" package only ever ships OpenCode 1, and v1/v2 cannot
+# be installed side by side under the same `opencode` command.
+Write-Step "OpenCode AI CLI (v2) ကို စစ်ဆေးနေပါသည်..."
+
 $opencodeVersion = $null
+$opencodeMajor = $null
 if (Test-Command "opencode") {
     try { $opencodeVersion = (& opencode --version 2>$null | Select-Object -First 1) } catch { $opencodeVersion = $null }
+    if ($opencodeVersion -match '(\d+)\.\d+') { $opencodeMajor = [int]$Matches[1] }
 }
 
-if (-not $opencodeVersion) {
-    Write-Step "OpenCode မတွေ့ပါ။ npm ဖြင့် တပ်ဆင်နေပါသည် (npm install -g opencode-ai@latest)..."
-    npm install -g opencode-ai@latest
-    Refresh-Path
-
-    if (-not (Test-Command "opencode")) {
-        Write-Host "OpenCode ကို PATH တွင် မတွေ့ပါ။ Terminal ကို ပိတ်ပြီး ပြန်ဖွင့်၍ 'opencode --version' ဖြင့် စစ်ဆေးပါ။" -ForegroundColor Yellow
-    } else {
-        Write-Host "OpenCode တပ်ဆင်ပြီးပါပြီ: $(opencode --version)" -ForegroundColor Green
-    }
-} elseif ($opencodeVersion -notmatch "^2\.") {
-    Write-Step "OpenCode ရှိပြီးသားဖြစ်ပါသည်: $opencodeVersion (v2 မဟုတ်ပါ)"
-    if (Test-Command "npm") {
-        Write-Step "OpenCode ကို နောက်ဆုံးဗားရှင်း (v2) သို့ အဆင့်မြှင့်နေပါသည်..."
-        npm install -g opencode-ai@latest
-        Refresh-Path
-        try { Write-Host " ဗားရှင်း အသစ်: $(& opencode --version)" -ForegroundColor Green } catch {}
-    } else {
-        Write-Host " npm မရှိပါ။ 'npm install -g opencode-ai@latest' ဖြင့် လက်ဖြင့် အဆင့်မြှင့်ပါ။" -ForegroundColor Yellow
-    }
+if ($opencodeMajor -eq 2) {
+    Write-Host " OpenCode v2 ရှိပြီးသားဖြစ်ပါသည်: $opencodeVersion" -ForegroundColor Green
+    Write-Host " (နောက်ဆုံးဗားရှင်း ရယူရန်: opencode upgrade)" -ForegroundColor DarkGray
 } else {
-    Write-Step "OpenCode ရှိပြီးသားဖြစ်ပါသည်: $opencodeVersion"
+    if ($opencodeVersion) {
+        Write-Host " OpenCode v1 ($opencodeVersion) ကို တွေ့ပါသည်။ v2 နှင့် တွဲဖက်၍ မရပါ။" -ForegroundColor Yellow
+    } else {
+        Write-Host " OpenCode မတွေ့ပါ။" -ForegroundColor Yellow
+    }
+    if (Test-Command "scoop") {
+        Write-Host " (Scoop သုံးသူဖြစ်ပါက: scoop install versions/opencode2)" -ForegroundColor DarkGray
+    }
+
+    $opencodeInstalled = $false
+
+    # 3a. Official v2 npm package (Node.js/npm comes from step 1).
+    if (Test-Command "npm") {
+        if ($opencodeVersion) {
+            Write-Host " v1 ကို ဖယ်ရှားနေပါသည် (npm uninstall -g opencode-ai)..." -ForegroundColor DarkGray
+            npm uninstall -g opencode-ai 2>$null | Out-Null
+        }
+        Write-Host " npm ဖြင့် OpenCode v2 တပ်ဆင်နေပါသည် (npm install -g @opencode/cli)..." -ForegroundColor Cyan
+        npm install -g @opencode/cli
+        Refresh-Path
+        if (Test-Command "opencode") { $opencodeInstalled = $true }
+    }
+
+    # 3b. Fallback: standalone Windows binary (no Node.js required).
+    if (-not $opencodeInstalled) {
+        Write-Host " Standalone binary ကို download လုပ်နေပါသည်..." -ForegroundColor Yellow
+        $binaryDir = Join-Path $env:LOCALAPPDATA "Programs\opencode"
+        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
+        $zipUrl = "https://opencode.ai/update/api/latest/cli/opencode/opencode-windows-$arch.zip"
+        $zipPath = Join-Path $env:TEMP "opencode-windows-$arch.zip"
+        try {
+            New-Item -ItemType Directory -Force -Path $binaryDir | Out-Null
+            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+            Expand-Archive -Path $zipPath -DestinationPath $binaryDir -Force
+            Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+
+            $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+            if ($userPath -notlike "*$binaryDir*") {
+                [Environment]::SetEnvironmentVariable("Path", "$userPath;$binaryDir", "User")
+            }
+            if ($env:Path -notlike "*$binaryDir*") { $env:Path = "$env:Path;$binaryDir" }
+
+            if (Test-Command "opencode") { $opencodeInstalled = $true }
+        } catch {
+            Write-Host " Standalone download မအောင်မြင်ပါ: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+
+    if ($opencodeInstalled) {
+        try { Write-Host " OpenCode တပ်ဆင်ပြီးပါပြီ: $(& opencode --version)" -ForegroundColor Green } catch {}
+    } else {
+        Write-Host " OpenCode ကို အလိုအလျောက် တပ်ဆင်နိုင်ခြင်း မရှိပါ။" -ForegroundColor Red
+        Write-Host " https://opencode.ai/v2/docs/ မှ လမ်းညွှန်အတိုင်း လက်ဖြင့် တပ်ဆင်ပါ။" -ForegroundColor Yellow
+    }
 }
 
 # 4. Build tools (for node-pty native module)

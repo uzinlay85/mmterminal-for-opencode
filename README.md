@@ -55,7 +55,7 @@ Windows ပေါ်တွင် **OpenCode AI Assistant** ကို အသု�
 
 ဤ project folder ထဲရှိ **`Install-Terminal.bat`** ကို Right-click → **Run as administrator** (သို့မဟုတ်) Double-Click နှိပ်လိုက်ရုံဖြင့် အောက်ပါအရာများကို အလိုအလျောက် တပ်ဆင်ပေးပါသည်-
 
-- **OpenCode AI CLI** (`opencode-ai` နောက်ဆုံးဗားရှင်း)
+- **OpenCode AI CLI v2** (`@opencode/cli` — နောက်ဆုံးဗားရှင်း)
 - Node.js (LTS) နှင့် Git for Windows
 - C++ Build Tools (`node-pty` အတွက်)
 - Project dependencies (`npm install`)

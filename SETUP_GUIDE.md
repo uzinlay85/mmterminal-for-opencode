@@ -11,7 +11,7 @@ Windows ပေါ်တွင် OpenCode AI ကို မြန်မာစာ 
 3. Installer က အောက်ပါ အရာများကို အလိုအလျောက် လုပ်ဆောင်ပေးပါမည်-
    - Node.js (LTS)
    - Git for Windows
-   - OpenCode AI CLI (`opencode-ai`)
+   - OpenCode AI CLI v2 (`@opencode/cli`)
    - C++ Build Tools (node-pty အတွက်)
    - Project dependencies (`npm install`)
    - OpenCode အခမဲ့ Model Config (`%USERPROFILE%\.config\opencode\opencode.jsonc`)
@@ -34,9 +34,17 @@ Windows ပေါ်တွင် OpenCode AI ကို မြန်မာစာ 
 
 ### OpenCode CLI တပ်ဆင်ခြင်း
 ```powershell
-npm install -g opencode-ai
+npm install -g @opencode/cli
 opencode --version
 ```
+
+> ⚠️ **အရေးကြီး:** OpenCode **v2** ၏ npm package အမည်မှာ **`@opencode/cli`** ဖြစ်ပါသည်။
+> အဟောင်း `opencode-ai` package သည် **v1 (1.x)** ကိုသာ ပေးပါသည် — v2 အတွက် မသုံးပါနှင့်။ v1 နှင့် v2 ကို `opencode` command တစ်ခုတည်းအောက်တွင် တွဲဖက် တပ်ဆင်၍ မရပါ။
+> v1 ရှိနေပါက အရင် ဖယ်ရှားပါ: `npm uninstall -g opencode-ai`
+>
+> အခြား နည်းလမ်းများ — Scoop: `scoop install versions/opencode2` · Windows binary: https://opencode.ai/update/api/latest/cli/opencode/opencode-windows-x64.zip
+>
+> 🔄 **နောက်ဆုံးဗားရှင်း ရယူရန်:** `opencode upgrade` (One-Click Installer က ဤကိစ္စကို အလိုအလျောက် စစ်ဆေးပေးပါသည်)
 
 ### OpenCode အခမဲ့ Model Config သတ်မှတ်ခြင်း (Optional)
 `%USERPROFILE%\.config\opencode\opencode.jsonc` ဖိုင်ကို ဖန်တီးပြီး အောက်ပါအတိုင်း ထည့်ပါ (One-Click Installer က ဤဖိုင်ကို အလိုအလျောက် ဖန်တီးပေးပါသည်)-
