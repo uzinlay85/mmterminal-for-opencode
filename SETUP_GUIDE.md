@@ -1,4 +1,4 @@
-﻿# 🇲🇲 Myanmar OpenCode Terminal — Setup Guide (လွယ်ကူသော တပ်ဆင်နည်း)
+# 🇲🇲 Myanmar OpenCode Terminal — Setup Guide (လွယ်ကူသော တပ်ဆင်နည်း)
 
 Windows ပေါ်တွင် OpenCode AI ကို မြန်မာစာ (Myanmar Unicode) ဖြင့် အသုံးပြုနိုင်စေရန် ဖန်တီးထားသော Desktop Terminal App ဖြစ်ပါသည်။
 
@@ -127,11 +127,27 @@ opencode auth login google
 ```
 သို့မဟုတ် `opencode auth login` ကို run ပြီး စာရင်းထဲမှ လိုချင်သော Provider ကို ရွေးချယ်ပါ။ Browser OAuth သို့မဟုတ် API key paste ဖြင့် ဝင်ရောက်နိုင်ပါသည်။
 
-### Account ပြောင်းလဲ/ထွက်ခြင်း
+### 👤 OpenCode Account စီမံခြင်းနှင့် ပြောင်းလဲခြင်း (Token Limit ဖြေရှင်းချက်)
+
+> ❓ **မေးလေ့ရှိသော မေးခွန်း: Project တစ်ခုတည်းပေါ်တွင် အကောင့်ပြောင်းပြီး သုံးလို့ရပါသလား?**  
+> 👉 **လုံးဝ အသုံးပြုနိုင်ပါသည်။** OpenCode ၏ Account / Credentials များသည် System Profile ထဲတွင် သိမ်းဆည်းထားပြီး Project ဖိုင်များနှင့် Git history များသည် လက်ရှိ Project Folder ထဲတွင် သီးခြား တည်ရှိပါသည်။ ထို့ကြောင့် အကောင့်ပြောင်းလိုက်သော်လည်း Project ဖိုင်များ လုံးဝ ပျက်စီး/ပြောင်းလဲခြင်း မရှိဘဲ AI ခေါ်ယူသည့် Quota / Account သာ ပြောင်းလဲသွားမည် ဖြစ်ပါသည်။
+
+1. **App UI မှ အလွယ်တကူ ပြောင်းလဲခြင်း (အကြံပြုချက်)**:
+   - Header အပေါ်ဘားရှိ **`👤 Account`** ခလုတ် (သို့မဟုတ် Terminal Toolbar ရှိ **`👤 Account ပြောင်းမည်`**) ကို နှိပ်ပါ။
+   - ချိတ်ဆက်ထားသော Account များ စာရင်း ပေါ်လာပါမည်။
+   - မိမိသုံးလိုသော Account ဘေးရှိ **`🔄 ပြောင်းမည် (Switch)`** ခလုတ်ကို ကလစ်တစ်ချက် နှိပ်လိုက်ရုံဖြင့် အကောင့်ချက်ချင်း ပြောင်းသွားပါမည်။
+
+2. **Token Limit ဖြစ်သွားပါက အကောင့်အသစ်ဖြင့် Login ဝင်ခြင်း**:
+   - Modal ထဲရှိ **`➕ Account အသစ်ဖြင့် Login ဝင်မည်`** ခလုတ်ကို နှိပ်ပါ။
+   - Browser တွင် အခြား Google / Gmail အကောင့် သို့မဟုတ် Duck.com email အသစ်ဖြင့် OpenCode Console သို့ Sign in ဝင်ရောက်ပြီး ချိတ်ဆက်ပါ။
+   - ချိတ်ဆက်ပြီးပါက စာရင်းထဲတွင် အကောင့်အသစ် ပေါ်လာမည်ဖြစ်ပြီး ၎င်းကို ရွေးချယ်ကာ Quota အသစ်ဖြင့် ဆက်လက် Coding ရေးသားနိုင်ပါသည်။
+
+3. **Command Line မှ အသုံးပြုလိုပါက**:
 ```powershell
-opencode auth switch   # account ပြောင်းရန်
-opencode auth logout    # ထွက်ရန်
-opencode auth list      # သိမ်းဆည်းထားသော credential များ ကြည့်ရန်
+opencode auth login     # account အသစ် ထပ်မံချိတ်ဆက်ရန်
+opencode auth switch    # account ပြောင်းလဲရန်
+opencode auth logout    # account အဟောင်း ထွက်/ဖယ်ရှားရန်
+opencode auth list      # သိမ်းဆည်းထားသော account များ ကြည့်ရန်
 ```
 
 > 💡 **မှတ်ချက်-** အခမဲ့ Model များ (`*-free`) ကို အသုံးပြုရန် OpenCode Console account (Personal) တစ်ခုသာ လိုအပ်ပါသည်။ ငွေကြေး ပေးဆောင်ရန် မလိုပါ။

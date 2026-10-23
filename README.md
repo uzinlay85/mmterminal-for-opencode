@@ -47,6 +47,10 @@ Windows ပေါ်တွင် **OpenCode AI Assistant** ကို အသု�
 8. **📂 In-App Folder Browser (Visual Project Picker)**:
    - Project ဖိုဒါလမ်းကြောင်းကို လက်ဖြင့် စာရိုက်ထည့်စရာမလိုဘဲ Header ဘားရှိ `📂 Browse` ခလုတ်ကို နှိပ်ကာ App အတွင်း Folder Browser (Drive နှင့် ဖိုင်တွဲစာရင်း) ဖြင့် Visual အနေဖြင့် လွယ်ကူစွာ ရှာဖွေရွေးချယ်ပြောင်းလဲနိုင်ပါသည်။
 
+9. **👤 OpenCode Account Switcher (Token Limit ဖြေရှင်းချက်)**:
+   - Account အသစ်များဖြင့် လွတ်လပ်စွာ ထပ်မံ Login ဝင်ရောက်နိုင်ပြီး ချိတ်ဆက်ထားသော Account များကို Visual စာရင်းမှ တစ်ချက်နှိပ်ရုံဖြင့် အလွယ်တကူ ပြောင်းလဲ (Switch) အသုံးပြုနိုင်ပါသည်။
+   - Token limit သို့မဟုတ် Free Quota ကုန်သွားပါက အခြား Account သို့ ချက်ချင်း ပြောင်းသုံးနိုင်ပြီး Project ဖိုင်များနှင့် Git history များ လုံးဝ ပျက်ပြယ်ခြင်း မရှိဘဲ လုပ်လက်စ Project ပေါ်တွင်ပင် ဆက်လက် Coding ရေးသားနိုင်ပါသည်။
+
 ---
 
 ## 🚀 စတင်အသုံးပြုပုံ (How to Launch)

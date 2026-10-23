@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Must match API_VERSION in server.js. If the running backend is older (e.g. the
   // server was left running from a previous version) the UI says so instead of
   // throwing cryptic parse errors.
-  const EXPECTED_API_VERSION = 5;
+  const EXPECTED_API_VERSION = 6;
 
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
@@ -918,6 +918,288 @@ try {
     }
   });
 
+  // ---- OpenCode Account Management & Switching ----
+  const btnOpenAccount = document.getElementById('btn-open-account');
+  const headerAccountLabel = document.getElementById('header-account-label');
+  const btnSwitchAccountQuick = document.getElementById('btn-switch-account-quick');
+  const btnSettingsOpenAccount = document.getElementById('btn-settings-open-account');
+  const settingsAccountSummary = document.getElementById('settings-account-summary');
+  const modalAccount = document.getElementById('modal-account');
+  const accountListContainer = document.getElementById('account-list-container');
+  const btnAccountLogin = document.getElementById('btn-account-login');
+  const btnAccountLoginExt = document.getElementById('btn-account-login-ext');
+  const btnRefreshAccounts = document.getElementById('btn-refresh-accounts');
+
+  let cachedAccounts = [];
+  let currentActiveAccount = null;
+
+  function formatAccountDisplay(acc) {
+    if (!acc) return 'OpenCode Account';
+    if (acc.email) return acc.email;
+    if (acc.label && acc.hint) return `${acc.label} (••••${acc.hint})`;
+    if (acc.label) return acc.label;
+    if (acc.hint) return `API Key (••••${acc.hint})`;
+    return acc.integrationID || 'Account';
+  }
+
+  function renderAccountList(accounts) {
+    if (!accountListContainer) return;
+    accountListContainer.innerHTML = '';
+
+    if (!accounts || accounts.length === 0) {
+      accountListContainer.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); padding: 18px 10px; background: var(--bg-primary); border-radius: 6px; border: 1px dashed var(--border-color);">
+          <div style="font-size: 14px; margin-bottom: 6px; color: #fff;">Account မချိတ်ဆက်ရသေးပါ</div>
+          <div style="font-size: 11px;">အထက်ပါ "➕ Account အသစ်ဖြင့် Login ဝင်မည်" ကို နှိပ်၍ OpenCode Console / Google အကောင့် သို့မဟုတ် API Key ချိတ်ဆက်ပါ။</div>
+        </div>
+      `;
+      return;
+    }
+
+    accounts.forEach(acc => {
+      const card = document.createElement('div');
+      card.className = 'account-card notranslate';
+      card.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        background: ${acc.active ? 'rgba(35, 134, 54, 0.12)' : 'var(--bg-primary)'};
+        border: 1px solid ${acc.active ? '#238636' : 'var(--border-color)'};
+        border-radius: 6px;
+        transition: all 0.15s ease;
+      `;
+
+      const infoDiv = document.createElement('div');
+      infoDiv.style.cssText = 'flex: 1; min-width: 0;';
+
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-bottom: 2px; flex-wrap: wrap;';
+
+      const providerBadge = document.createElement('span');
+      providerBadge.className = 'brand-badge';
+      providerBadge.style.cssText = 'font-size: 10px; text-transform: uppercase; padding: 1px 5px;';
+      providerBadge.textContent = acc.integrationID === 'opencode' ? 'OpenCode' : acc.integrationID;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.style.cssText = 'font-weight: 600; font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+      nameSpan.textContent = acc.label || acc.integrationID;
+
+      titleRow.appendChild(providerBadge);
+      titleRow.appendChild(nameSpan);
+
+      if (acc.active) {
+        const activeBadge = document.createElement('span');
+        activeBadge.style.cssText = 'font-size: 11px; color: #3fb950; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;';
+        activeBadge.innerHTML = '✓ <span style="font-size: 10px;">လက်ရှိသုံးနေသည်</span>';
+        titleRow.appendChild(activeBadge);
+      }
+
+      const descDiv = document.createElement('div');
+      descDiv.style.cssText = 'font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); word-break: break-all;';
+      if (acc.email) {
+        descDiv.textContent = `📧 ${acc.email}` + (acc.orgName ? ` · ${acc.orgName}` : '');
+      } else if (acc.hint) {
+        descDiv.textContent = `🔑 Key: ••••••••${acc.hint}`;
+      } else {
+        descDiv.textContent = `ID: ${acc.id.slice(0, 16)}...`;
+      }
+
+      infoDiv.appendChild(titleRow);
+      infoDiv.appendChild(descDiv);
+
+      const actionDiv = document.createElement('div');
+      actionDiv.style.cssText = 'display: flex; gap: 6px; align-items: center; flex-shrink: 0;';
+
+      if (!acc.active) {
+        const switchBtn = document.createElement('button');
+        switchBtn.className = 'action-btn btn-blue notranslate';
+        switchBtn.style.cssText = 'padding: 4px 10px; font-size: 12px;';
+        switchBtn.innerHTML = '<span>🔄 ပြောင်းမည်</span>';
+        switchBtn.title = 'ဤ Account သို့ ချက်ချင်း ပြောင်းလဲအသုံးပြုမည် (Switch)';
+        switchBtn.addEventListener('click', () => {
+          switchAccount(acc.integrationID, acc.id, acc.label || acc.email || acc.integrationID);
+        });
+        actionDiv.appendChild(switchBtn);
+      }
+
+      const logoutBtn = document.createElement('button');
+      logoutBtn.className = 'action-btn notranslate';
+      logoutBtn.style.cssText = 'padding: 4px 8px; font-size: 12px; color: #f85149; border-color: rgba(248,81,73,0.3);';
+      logoutBtn.innerHTML = '<span>🗑️</span>';
+      logoutBtn.title = 'ဤ Account အား Logout လုပ်ပြီး ဖယ်ရှားမည်';
+      logoutBtn.addEventListener('click', () => {
+        const disp = acc.email || acc.label || acc.integrationID;
+        if (confirm(`"${disp}" အား OpenCode မှ Logout ပြုလုပ်ရန် သေချာပါသလား?`)) {
+          logoutAccount(acc.integrationID, acc.id, disp);
+        }
+      });
+      actionDiv.appendChild(logoutBtn);
+
+      card.appendChild(infoDiv);
+      card.appendChild(actionDiv);
+      accountListContainer.appendChild(card);
+    });
+  }
+
+  function loadAccounts(showToastOnSuccess = false) {
+    fetch('/api/auth/accounts')
+      .then(r => r.json())
+      .then(res => {
+        if (!res || !res.success) {
+          if (settingsAccountSummary) settingsAccountSummary.textContent = 'Account စစ်ဆေး၍ မရပါ';
+          return;
+        }
+        cachedAccounts = res.accounts || [];
+        currentActiveAccount = res.activeAccount || null;
+
+        // Update header label
+        if (headerAccountLabel) {
+          if (currentActiveAccount) {
+            const shortName = currentActiveAccount.email
+              ? currentActiveAccount.email.split('@')[0]
+              : (currentActiveAccount.label || 'Account');
+            headerAccountLabel.textContent = `👤 ${shortName}`;
+            if (btnOpenAccount) {
+              btnOpenAccount.title = `လက်ရှိ Account: ${formatAccountDisplay(currentActiveAccount)} (နှိပ်၍ ပြောင်းပါ)`;
+            }
+          } else {
+            headerAccountLabel.textContent = '👤 Account';
+          }
+        }
+
+        // Update settings summary
+        if (settingsAccountSummary) {
+          if (currentActiveAccount) {
+            settingsAccountSummary.textContent = `လက်ရှိ: ${formatAccountDisplay(currentActiveAccount)}`;
+          } else {
+            settingsAccountSummary.textContent = 'Account ချိတ်ဆက်ထားခြင်း မရှိပါ';
+          }
+        }
+
+        renderAccountList(cachedAccounts);
+        if (showToastOnSuccess) {
+          showToast('🔄 Account စာရင်း ပြန်လည်ရယူပြီးပါပြီ');
+        }
+      })
+      .catch(() => {
+        if (settingsAccountSummary) settingsAccountSummary.textContent = 'Error checking accounts';
+      });
+  }
+
+  function switchAccount(target, credentialId, label) {
+    showToast(`⏳ "${label}" သို့ ပြောင်းလဲနေပါသည်...`);
+    fetch('/api/auth/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target, credentialId })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast(`✅ OpenCode Account ကို "${label}" သို့ အောင်မြင်စွာ ပြောင်းလိုက်ပါပြီ`);
+          loadAccounts();
+          loadModelsFromCli(true);
+        } else {
+          alert('Account ပြောင်းလဲမှု မအောင်မြင်ပါ: ' + (data.error || 'အမှားဖြစ်ပေါ်ပါသည်'));
+        }
+      })
+      .catch(err => {
+        alert('Network error: ' + err.message);
+      });
+  }
+
+  function logoutAccount(target, credentialId, label) {
+    showToast(`⏳ "${label}" ကို Logout လုပ်နေပါသည်...`);
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target, credentialId })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast(`🗑️ "${label}" အား Logout ပြုလုပ်ပြီးပါပြီ`);
+          loadAccounts();
+          loadModelsFromCli(true);
+        } else {
+          alert('Logout မအောင်မြင်ပါ: ' + (data.error || 'အမှားဖြစ်ပေါ်ပါသည်'));
+        }
+      })
+      .catch(err => {
+        alert('Network error: ' + err.message);
+      });
+  }
+
+  function launchExternalLogin() {
+    fetch('/api/auth/launch-login', { method: 'POST' })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          showToast('🌐 သီးသန့် Login Window (Login-OpenCode.bat) ပွင့်လာပါပြီ');
+        } else {
+          alert('Login Window ဖွင့်၍ မရပါ: ' + (res.error || ''));
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+  }
+
+  function startInteractiveLogin() {
+    closeModal(modalAccount);
+    closeModal(modalSettings);
+    // Switch to Terminal tab
+    const termTabBtn = document.querySelector('.tab-btn[data-tab="terminal"]');
+    if (termTabBtn) termTabBtn.click();
+
+    if (ws && isWsConnected) {
+      // Send Ctrl+C first to clear any running command or prompt, then opencode auth login
+      ws.send(JSON.stringify({ type: 'input', data: '\x03' }));
+      setTimeout(() => {
+        ws.send(JSON.stringify({ type: 'input', data: 'opencode auth login\r' }));
+      }, 150);
+      showToast('🚀 Terminal တွင် Account အသစ် Login လုပ်ငန်းစဉ် စတင်နေပါသည်...');
+      if (term) term.focus();
+    } else {
+      showToast('⚠️ Terminal မချိတ်ဆက်ရသေးပါ — သီးသန့် Window ဖြင့် ဖွင့်ပါမည်');
+      launchExternalLogin();
+    }
+  }
+
+  if (btnOpenAccount) {
+    btnOpenAccount.addEventListener('click', () => {
+      loadAccounts();
+      openModal(modalAccount);
+    });
+  }
+
+  if (btnSwitchAccountQuick) {
+    btnSwitchAccountQuick.addEventListener('click', () => {
+      loadAccounts();
+      openModal(modalAccount);
+    });
+  }
+
+  if (btnSettingsOpenAccount) {
+    btnSettingsOpenAccount.addEventListener('click', () => {
+      closeModal(modalSettings);
+      loadAccounts();
+      openModal(modalAccount);
+    });
+  }
+
+  if (btnAccountLogin) {
+    btnAccountLogin.addEventListener('click', startInteractiveLogin);
+  }
+
+  if (btnAccountLoginExt) {
+    btnAccountLoginExt.addEventListener('click', launchExternalLogin);
+  }
+
+  if (btnRefreshAccounts) {
+    btnRefreshAccounts.addEventListener('click', () => loadAccounts(true));
+  }
+
   // Tab Switching
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1272,4 +1554,5 @@ try {
   renderRunnerHistory();
   renderRecentProjects();
   loadModelsFromCli();
+  loadAccounts();
 });

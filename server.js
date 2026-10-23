@@ -35,7 +35,7 @@ const PORT = process.env.PORT || 3820;
 // its own expectation so a long-running (stale) server is detected instead of
 // failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
 // parses this same line to decide whether a running server needs a restart.
-const API_VERSION = 5;
+const API_VERSION = 6;
 
 let currentCwd = process.cwd();
 
@@ -698,6 +698,106 @@ app.post('/api/opencode/run', (req, res) => {
     try {
       runner.kill();
     } catch (e) {}
+  });
+});
+
+// API: List OpenCode accounts and credentials (sanitized, secrets stripped)
+app.get('/api/auth/accounts', (req, res) => {
+  if (!cachedOpenCode.installed) {
+    return res.json({ success: false, installed: false, accounts: [] });
+  }
+
+  exec('opencode auth export', { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+    if (err) {
+      return res.json({ success: false, error: err.message, accounts: [] });
+    }
+    try {
+      const raw = JSON.parse(stdout);
+      if (!Array.isArray(raw)) {
+        return res.json({ success: true, installed: true, accounts: [] });
+      }
+      const accounts = raw.map(item => {
+        const isKey = item.value?.type === 'key';
+        const email = item.value?.metadata?.email || null;
+        const orgName = item.value?.metadata?.orgName || null;
+        const accountId = item.value?.metadata?.accountID || null;
+        let hint = null;
+        if (isKey && item.value?.key) {
+          hint = String(item.value.key).slice(-4);
+        }
+        return {
+          id: item.id,
+          integrationID: item.integrationID,
+          label: item.label || item.integrationID,
+          active: !!item.active,
+          type: item.value?.type || 'unknown',
+          email,
+          orgName,
+          accountId,
+          hint
+        };
+      });
+      const activeOpenCode = accounts.find(a => a.integrationID === 'opencode' && a.active);
+      return res.json({
+        success: true,
+        installed: true,
+        accounts,
+        activeAccount: activeOpenCode || accounts.find(a => a.active) || null
+      });
+    } catch (parseErr) {
+      return res.json({ success: false, error: parseErr.message, accounts: [] });
+    }
+  });
+});
+
+// API: Switch active account for an integration
+app.post('/api/auth/switch', (req, res) => {
+  const { target, credentialId } = req.body || {};
+  if (!target || !credentialId) {
+    return res.status(400).json({ error: 'target and credentialId required' });
+  }
+  if (!/^[\w.-]+$/.test(target) || !/^[\w.-]+$/.test(credentialId)) {
+    return res.status(400).json({ error: 'Invalid identifier' });
+  }
+
+  exec(`opencode auth switch "${target}" "${credentialId}"`, (err, stdout, stderr) => {
+    if (err) {
+      return res.status(500).json({ error: (stderr || stdout || err.message).trim() });
+    }
+    // Bust models catalogue cache so models matching the new account are refreshed
+    modelsCache = { models: [], fetchedAt: 0 };
+    return res.json({ success: true, message: 'Switched successfully' });
+  });
+});
+
+// API: Log out an account/credential
+app.post('/api/auth/logout', (req, res) => {
+  const { target, credentialId } = req.body || {};
+  if (!target || !credentialId) {
+    return res.status(400).json({ error: 'target and credentialId required' });
+  }
+  if (!/^[\w.-]+$/.test(target) || !/^[\w.-]+$/.test(credentialId)) {
+    return res.status(400).json({ error: 'Invalid identifier' });
+  }
+
+  exec(`opencode auth logout "${target}" "${credentialId}"`, (err, stdout, stderr) => {
+    if (err) {
+      return res.status(500).json({ error: (stderr || stdout || err.message).trim() });
+    }
+    modelsCache = { models: [], fetchedAt: 0 };
+    return res.json({ success: true, message: 'Logged out successfully' });
+  });
+});
+
+// API: Launch external login script in a visible terminal window
+app.post('/api/auth/launch-login', (req, res) => {
+  const batPath = path.join(__dirname, 'Login-OpenCode.bat');
+  const cmd = fs.existsSync(batPath)
+    ? `start "" "${batPath}"`
+    : 'start "OpenCode Login" cmd /k opencode auth login';
+  exec(cmd, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    return res.json({ success: true });
   });
 });
 

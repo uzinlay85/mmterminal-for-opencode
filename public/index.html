@@ -55,6 +55,9 @@
         <span class="status-dot"></span>
         <span id="status-text">OpenCode အသင့်ရှိပါသည်</span>
       </div>
+      <button id="btn-open-account" class="action-btn notranslate" title="OpenCode Account စီမံမည် / ပြောင်းမည်">
+        <span id="header-account-label">👤 Account</span>
+      </button>
       <button id="btn-start-opencode" class="action-btn btn-primary notranslate" title="OpenCode Standard TUI စတင်မည်">
         <span>🚀 OpenCode စတင်မည်</span>
       </button>
@@ -89,6 +92,7 @@
           <button id="btn-ctrl-l" class="tool-chip notranslate" title="TUI Screen ပြန်လည်ဆွဲသားရန် (Ctrl+L)">✨ Screen ပြင်မည် (Ctrl+L)</button>
           <button id="btn-clear-term" class="tool-chip notranslate">🧹 Terminal ရှင်းမည်</button>
           <button id="btn-restart-term" class="tool-chip notranslate">🔄 ပြန်စမည်</button>
+          <button id="btn-switch-account-quick" class="tool-chip notranslate" title="OpenCode Account စီမံမည် / ပြောင်းမည်">👤 Account ပြောင်းမည်</button>
         </div>
         <div style="display: flex; gap: 8px; align-items: center; color: #58a6ff;">
           <span class="hint-text">💡 အကြံပြုချက်: အောက်ပါ Composer အကွက်ထဲတွင် မြန်မာလို ရိုက်ထည့်ပြီး Enter နှိပ်ပါ</span>
@@ -362,6 +366,15 @@
           </select>
         </div>
         <hr style="border-color: var(--border-color); margin: 8px 0;">
+        <div style="background: rgba(56, 139, 253, 0.08); border: 1px solid rgba(56, 139, 253, 0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <div>
+            <div style="font-weight: 600; font-size: 13px; color: #58a6ff;">👤 OpenCode Account စီမံခြင်း</div>
+            <div id="settings-account-summary" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">စစ်ဆေးနေပါသည်...</div>
+          </div>
+          <button id="btn-settings-open-account" class="action-btn notranslate" style="padding: 4px 10px; font-size: 12px;">
+            <span>ပြောင်းရန် / စီမံရန်</span>
+          </button>
+        </div>
         <h4 style="font-size: 13px; color: #58a6ff; font-weight: 600;">🔑 AI Provider API Keys (မိမိပိုင် Key သုံးလိုပါက)</h4>
         <div class="setting-row notranslate">
           <span>Gemini API Key:</span>
@@ -447,6 +460,50 @@
         <h4 style="color:#58a6ff;margin:8px 0 4px;">🔟 Free Model များ (အခမဲ့)</h4>
         <p>နောက်ဆုံးစာရင်းကို Terminal တွင် <code>opencode models</code> ဖြင့် စစ်ဆေးပါ။ အသုံးများသော Free Model များ: <b>deepseek-v4.1-flash-free</b> (coding/debug), <b>nemotron-3.5-super-vl-free</b> (image/UI), <b>glm-5.3-flash-free</b> (အမြန် task), <b>minimax-m3.1-flash-free</b>။ ရွေးချယ်ရန် Tab 3 သို့မဟုတ် <code>opencode run -m &lt;model&gt;</code> သုံးပါ။</p>
         <p>🔄 Tab 3 ၏ Model စာရင်းကို OpenCode မှ <b>တိုက်ရိုက် (live)</b> ရယူပါသည် — Free Model အသစ် ထွက်လာသည်နှင့် စာရင်းထဲ အလိုအလျောက် ပါလာပါမည်။ Free များကို <b>🆓 Free Model များ</b> အုပ်စုတွင် ထိပ်မှ ပြပြီး <b>🔄 ပြန်ယူမည်</b> ခလုတ်ဖြင့် ချက်ချင်း ပြန်လည် ရယူနိုင်ပါသည်။</p>
+      </div>
+    </div>
+  </div>
+
+    <!-- OpenCode Account Management / Switch Modal -->
+  <div id="modal-account" class="modal-overlay notranslate">
+    <div class="modal-box notranslate" style="max-width: 580px;">
+      <div class="modal-header notranslate">
+        <span>👤 OpenCode Account စီမံခြင်းနှင့် ပြောင်းလဲခြင်း</span>
+        <button class="close-btn" data-close="modal-account">&times;</button>
+      </div>
+      <div class="modal-body notranslate">
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6;">
+          OpenCode AI အသုံးပြုရာတွင် စာရင်းသွင်းထားသော Account များကို ဤနေရာတွင် လွတ်လပ်စွာ ပြောင်းလဲ (Switch) အသုံးပြုနိုင်ပါသည်။ <b>Token limit ဖြစ်သွားပါက နောက် Account အသစ်တစ်ခုသို့ ပြောင်း၍ ဤ Project ပေါ်တွင်ပင် ဆက်လက် Coding ရေးနိုင်ပါသည်</b> (Code များ၊ ဖိုင်များနှင့် Git history များ လုံးဝ ပျက်ပြယ်ခြင်း မရှိပါ)။
+        </div>
+
+        <!-- Action bar for adding new account -->
+        <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+          <button id="btn-account-login" class="action-btn btn-primary notranslate" style="flex: 1; justify-content: center;" title="Terminal တွင် Login လုပ်ငန်းစဉ် စတင်မည်">
+            <span>➕ Account အသစ်ဖြင့် Login ဝင်မည်</span>
+          </button>
+          <button id="btn-account-login-ext" class="action-btn notranslate" title="သီးသန့် Login Window (Login-OpenCode.bat) ဖွင့်မည်">
+            <span>🌐 သီးသန့် Window ဖြင့် ဝင်မည်</span>
+          </button>
+          <button id="btn-refresh-accounts" class="action-btn notranslate" title="အကောင့်စာရင်း ပြန်လည်စစ်ဆေးမည်">
+            <span>🔄 ပြန်စစ်မည်</span>
+          </button>
+        </div>
+
+        <div style="font-size: 11px; font-weight: 600; color: #58a6ff; margin-bottom: 6px; text-transform: uppercase;">
+          ချိတ်ဆက်ထားသော Account များ (Saved Accounts):
+        </div>
+
+        <div id="account-list-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; margin-bottom: 12px; padding-right: 2px;">
+          <div style="text-align: center; color: var(--text-muted); padding: 20px;">အကောင့်စာရင်း ရှာဖွေနေပါသည်...</div>
+        </div>
+
+        <div style="background: rgba(56, 139, 253, 0.08); border: 1px solid rgba(56, 139, 253, 0.2); border-radius: 6px; padding: 10px 12px; font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+          💡 <b>Token Limit ဖြေရှင်းနည်း:</b> OpenCode Console (Free Quota) ကုန်သွားပါက အထက်ပါ စာရင်းမှ အခြား Account သို့ <b>"ပြောင်းမည် (Switch)"</b> နှိပ်ပါ သို့မဟုတ် <b>"Account အသစ်ဖြင့် Login ဝင်မည်"</b> ကို နှိပ်၍ Gmail / Google အသစ် သို့မဟုတ် Duck.com email အသစ်ဖြင့် Sign in ဝင်ရောက်နိုင်ပါသည်။
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="action-btn notranslate" data-close="modal-account">ပိတ်မည်</button>
+        </div>
       </div>
     </div>
   </div>
