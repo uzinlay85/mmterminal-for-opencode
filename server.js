@@ -35,13 +35,23 @@ const PORT = process.env.PORT || 3820;
 // its own expectation so a long-running (stale) server is detected instead of
 // failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
 // parses this same line to decide whether a running server needs a restart.
-const API_VERSION = 6;
+const API_VERSION = 7;
 
 let currentCwd = process.cwd();
 
 // Background OpenCode Web process tracking
 let opencodeWebProcess = null;
 let opencodeWebUrl = null;
+
+function stopOpencodeWebProcess() {
+  if (opencodeWebProcess) {
+    try {
+      exec(`taskkill /F /T /PID ${opencodeWebProcess.pid}`, () => {});
+    } catch (e) {}
+    opencodeWebProcess = null;
+    opencodeWebUrl = null;
+  }
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -208,11 +218,7 @@ app.post('/api/cwd', (req, res) => {
     if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
       currentCwd = resolved;
       // If Web UI was running, stop it so it restarts in the new folder
-      if (opencodeWebProcess) {
-        try { exec(`taskkill /F /T /PID ${opencodeWebProcess.pid}`, () => {}); } catch(e) {}
-        opencodeWebProcess = null;
-        opencodeWebUrl = null;
-      }
+      stopOpencodeWebProcess();
       return res.json({ success: true, cwd: currentCwd });
     } else {
       return res.status(400).json({ error: 'Folder does not exist' });
@@ -274,11 +280,7 @@ app.post('/api/browse-folder', (req, res) => {
     if (selected && fs.existsSync(selected) && fs.statSync(selected).isDirectory()) {
       currentCwd = selected;
       // If Web UI was running, stop it so it restarts in the new folder
-      if (opencodeWebProcess) {
-        try { exec(`taskkill /F /T /PID ${opencodeWebProcess.pid}`, () => {}); } catch(e) {}
-        opencodeWebProcess = null;
-        opencodeWebUrl = null;
-      }
+      stopOpencodeWebProcess();
       return sendBrowse(200, { success: true, cwd: currentCwd });
     }
     // No valid selection: user cancelled, or the dialog process failed.
@@ -472,11 +474,7 @@ app.post('/api/opencode/web/start', async (req, res) => {
     }
 
     // 4. Standalone fallback: Use 'opencode serve' (v2) or 'opencode web' (v1)
-    if (opencodeWebProcess) {
-      try { exec(`taskkill /F /T /PID ${opencodeWebProcess.pid}`, () => {}); } catch(e) {}
-      opencodeWebProcess = null;
-      opencodeWebUrl = null;
-    }
+    stopOpencodeWebProcess();
 
     const webPort = await getAvailablePort(4096);
     const isV2 = !cachedOpenCode.version || cachedOpenCode.version.startsWith('2.');
@@ -547,14 +545,10 @@ app.post('/api/opencode/web/start', async (req, res) => {
 
 // API: OpenCode Web UI - Stop
 app.post('/api/opencode/web/stop', (req, res) => {
-  if (opencodeWebProcess) {
-    try {
-      exec(`taskkill /F /T /PID ${opencodeWebProcess.pid}`, () => {});
-    } catch (e) {}
-    opencodeWebProcess = null;
-    opencodeWebUrl = null;
-  }
-  res.json({ success: true });
+  stopOpencodeWebProcess();
+  exec('opencode service stop', () => {
+    res.json({ success: true });
+  });
 });
 
 // API: Generate / fetch pairing link for OpenCode 2.0 Web UI
@@ -766,7 +760,11 @@ app.post('/api/auth/switch', (req, res) => {
     }
     // Bust models catalogue cache so models matching the new account are refreshed
     modelsCache = { models: [], fetchedAt: 0 };
-    return res.json({ success: true, message: 'Switched successfully' });
+    // Terminate running web server process and restart OpenCode background service so new credentials take effect
+    stopOpencodeWebProcess();
+    exec('opencode service restart', () => {
+      return res.json({ success: true, message: 'Switched successfully' });
+    });
   });
 });
 
@@ -785,7 +783,10 @@ app.post('/api/auth/logout', (req, res) => {
       return res.status(500).json({ error: (stderr || stdout || err.message).trim() });
     }
     modelsCache = { models: [], fetchedAt: 0 };
-    return res.json({ success: true, message: 'Logged out successfully' });
+    stopOpencodeWebProcess();
+    exec('opencode service restart', () => {
+      return res.json({ success: true, message: 'Logged out successfully' });
+    });
   });
 });
 
@@ -916,11 +917,7 @@ wss.on('connection', (ws) => {
 
 // Cleanup on process termination
 function cleanUp() {
-  if (opencodeWebProcess) {
-    try {
-      exec(`taskkill /F /T /PID ${opencodeWebProcess.pid}`, () => {});
-    } catch (e) {}
-  }
+  stopOpencodeWebProcess();
 }
 process.on('SIGINT', () => { cleanUp(); process.exit(); });
 process.on('SIGTERM', () => { cleanUp(); process.exit(); });

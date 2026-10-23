@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Must match API_VERSION in server.js. If the running backend is older (e.g. the
   // server was left running from a previous version) the UI says so instead of
   // throwing cryptic parse errors.
-  const EXPECTED_API_VERSION = 6;
+  const EXPECTED_API_VERSION = 7;
 
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
@@ -1098,9 +1098,12 @@ try {
       .then(r => r.json())
       .then(data => {
         if (data.success) {
-          showToast(`✅ OpenCode Account ကို "${label}" သို့ အောင်မြင်စွာ ပြောင်းလိုက်ပါပြီ`);
+          showToast(`✅ OpenCode Account ကို "${label}" သို့ ပြောင်းလိုက်ပါပြီ (Web UI တွင် '+' New Chat နှိပ်ပါ)`);
           loadAccounts();
           loadModelsFromCli(true);
+          if (webServerUrl) {
+            checkWebUiStatus();
+          }
         } else {
           alert('Account ပြောင်းလဲမှု မအောင်မြင်ပါ: ' + (data.error || 'အမှားဖြစ်ပေါ်ပါသည်'));
         }
@@ -1123,6 +1126,9 @@ try {
           showToast(`🗑️ "${label}" အား Logout ပြုလုပ်ပြီးပါပြီ`);
           loadAccounts();
           loadModelsFromCli(true);
+          if (webServerUrl) {
+            checkWebUiStatus();
+          }
         } else {
           alert('Logout မအောင်မြင်ပါ: ' + (data.error || 'အမှားဖြစ်ပေါ်ပါသည်'));
         }
