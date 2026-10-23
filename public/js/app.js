@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Must match API_VERSION in server.js. If the running backend is older (e.g. the
   // server was left running from a previous version) the UI says so instead of
   // throwing cryptic parse errors.
-  const EXPECTED_API_VERSION = 7;
+  const EXPECTED_API_VERSION = 8;
 
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
@@ -786,6 +786,8 @@ try {
   });
 
   const settingGeminiKey = document.getElementById('setting-gemini-key');
+  const settingGroqKey = document.getElementById('setting-groq-key');
+  const settingOpenrouterKey = document.getElementById('setting-openrouter-key');
   const settingDeepseekKey = document.getElementById('setting-deepseek-key');
   const settingOpenaiKey = document.getElementById('setting-openai-key');
   const clearKeysBtn = document.getElementById('btn-clear-api-keys');
@@ -810,6 +812,8 @@ try {
       .then(r => r.json())
       .then(keys => {
         applyKeyHint(settingGeminiKey, keys.GEMINI_API_KEY, 'AIzaSy...');
+        applyKeyHint(settingGroqKey, keys.GROQ_API_KEY, 'gsk_...');
+        applyKeyHint(settingOpenrouterKey, keys.OPENROUTER_API_KEY, 'sk-or-v1-...');
         applyKeyHint(settingDeepseekKey, keys.DEEPSEEK_API_KEY, 'sk-...');
          applyKeyHint(settingOpenaiKey, keys.OPENAI_API_KEY, 'sk-...');
       })
@@ -826,6 +830,8 @@ try {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           GEMINI_API_KEY_CLEAR: true,
+          GROQ_API_KEY_CLEAR: true,
+          OPENROUTER_API_KEY_CLEAR: true,
           DEEPSEEK_API_KEY_CLEAR: true,
           OPENAI_API_KEY_CLEAR: true
         })
@@ -833,7 +839,10 @@ try {
         .then(r => r.json())
         .then(() => {
           applyKeyHint(settingGeminiKey, { set: false }, 'AIzaSy...');
+          applyKeyHint(settingGroqKey, { set: false }, 'gsk_...');
+          applyKeyHint(settingOpenrouterKey, { set: false }, 'sk-or-v1-...');
           applyKeyHint(settingDeepseekKey, { set: false }, 'sk-...');
+          applyKeyHint(settingOpenaiKey, { set: false }, 'sk-...');
           showToast('🗑️ API Key များကို ဖျက်ပြီးပါပြီ');
         })
         .catch(() => {});
@@ -861,6 +870,12 @@ try {
     if (settingGeminiKey && settingGeminiKey.value.trim()) {
       keyPayload.GEMINI_API_KEY = settingGeminiKey.value.trim();
     }
+    if (settingGroqKey && settingGroqKey.value.trim()) {
+      keyPayload.GROQ_API_KEY = settingGroqKey.value.trim();
+    }
+    if (settingOpenrouterKey && settingOpenrouterKey.value.trim()) {
+      keyPayload.OPENROUTER_API_KEY = settingOpenrouterKey.value.trim();
+    }
     if (settingDeepseekKey && settingDeepseekKey.value.trim()) {
       keyPayload.DEEPSEEK_API_KEY = settingDeepseekKey.value.trim();
     }
@@ -877,6 +892,8 @@ try {
         .then(res => {
           if (res && res.keys) {
             applyKeyHint(settingGeminiKey, res.keys.GEMINI_API_KEY, 'AIzaSy...');
+            applyKeyHint(settingGroqKey, res.keys.GROQ_API_KEY, 'gsk_...');
+            applyKeyHint(settingOpenrouterKey, res.keys.OPENROUTER_API_KEY, 'sk-or-v1-...');
             applyKeyHint(settingDeepseekKey, res.keys.DEEPSEEK_API_KEY, 'sk-...');
              applyKeyHint(settingOpenaiKey, res.keys.OPENAI_API_KEY, 'sk-...');
           }

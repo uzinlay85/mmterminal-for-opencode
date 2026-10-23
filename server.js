@@ -35,7 +35,7 @@ const PORT = process.env.PORT || 3820;
 // its own expectation so a long-running (stale) server is detected instead of
 // failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
 // parses this same line to decide whether a running server needs a restart.
-const API_VERSION = 7;
+const API_VERSION = 8;
 
 let currentCwd = process.cwd();
 
@@ -148,7 +148,13 @@ const configDir = process.env.MYOPENT_CONFIG_DIR
   || path.join(process.env.USERPROFILE || process.env.HOME || __dirname, '.config', 'myanmar-opencode-terminal');
 const keysConfigFile = path.join(configDir, 'api_keys.json');
 const legacyKeysFile = path.join(__dirname, 'api_keys.json');
-const KEY_NAMES = ['GEMINI_API_KEY', 'DEEPSEEK_API_KEY', 'OPENAI_API_KEY'];
+const KEY_NAMES = [
+  'GEMINI_API_KEY',
+  'GROQ_API_KEY',
+  'OPENROUTER_API_KEY',
+  'DEEPSEEK_API_KEY',
+  'OPENAI_API_KEY'
+];
 
 function readKeysFile(file) {
   try {
