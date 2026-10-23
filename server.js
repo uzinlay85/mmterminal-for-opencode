@@ -911,6 +911,11 @@ wss.on('connection', (ws) => {
     }
   });
 
+  ws.on('error', (err) => {
+    // Prevent unhandled error event from crashing the server
+    console.error('WebSocket client error:', err.message);
+  });
+
   ws.on('close', () => {
     if (ptyProcess) {
       try {
@@ -919,6 +924,14 @@ wss.on('connection', (ws) => {
       ptyProcess = null;
     }
   });
+});
+
+// Prevent unhandled errors or rejections from crashing the process
+process.on('uncaughtException', (err) => {
+  console.error('[Unhandled Exception]:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Unhandled Rejection]:', reason);
 });
 
 // Cleanup on process termination
