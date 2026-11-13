@@ -656,33 +656,107 @@ try {
       document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
     }
   });
+  // ---- In-app Folder Browser ----
+  const modalFolderBrowser = document.getElementById('modal-folder-browser');
+  const fbPathEl = document.getElementById('fb-path');
+  const fbListEl = document.getElementById('fb-list');
+  const fbCurrentEl = document.getElementById('fb-current');
+  const fbUpBtn = document.getElementById('btn-fb-up');
+  const fbThisPcBtn = document.getElementById('btn-fb-thispc');
+  const fbSelectBtn = document.getElementById('btn-fb-select');
+  let fbCurrentPath = null;
+  let fbParentPath = null;
+
   function browseWindowsFolder() {
-    const initial = currentCwdSpan.textContent && currentCwdSpan.textContent !== 'Loading...'
+    closeModal(modalFolder);
+    openModal(modalFolderBrowser);
+    loadFolderBrowser(currentCwdSpan.textContent && currentCwdSpan.textContent !== 'Loading...'
       ? currentCwdSpan.textContent
-      : (folderInputPath && folderInputPath.value ? folderInputPath.value : null);
-    fetch('/api/browse-folder', {
+      : null);
+  }
+
+  function loadFolderBrowser(targetPath) {
+    if (!fbListEl) return;
+    fbListEl.innerHTML = '<div style="color:var(--text-muted);padding:10px;text-align:center;">ဖိုင်တွဲများ ရှာဖွေနေပါသည်...</div>';
+    const query = targetPath ? ('?path=' + encodeURIComponent(targetPath)) : '';
+    fetch('/api/list-dirs' + query)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          fbListEl.innerHTML = `<div style="color:#ff7b72;padding:10px;">${escapeHtml(data.error)}</div>`;
+          return;
+        }
+        fbCurrentPath = data.path || null;
+        fbParentPath = data.parent || null;
+        if (fbPathEl) fbPathEl.value = data.path || 'This PC';
+        if (fbCurrentEl) fbCurrentEl.textContent = data.path ? ('ရွေးထားသည်: ' + data.path) : 'Drive တစ်ခု ရွေးပါ';
+        if (fbSelectBtn) {
+          fbSelectBtn.disabled = !data.path;
+          fbSelectBtn.style.opacity = data.path ? '1' : '0.5';
+        }
+        renderFolderList(data.dirs || []);
+      })
+      .catch(err => {
+        fbListEl.innerHTML = `<div style="color:#ff7b72;padding:10px;">Error: ${escapeHtml(err.message)}</div>`;
+      });
+  }
+
+  function renderFolderList(dirs) {
+    if (!fbListEl) return;
+    fbListEl.innerHTML = '';
+    if (!dirs.length) {
+      fbListEl.innerHTML = '<div style="color:var(--text-muted);padding:10px;text-align:center;">ဖိုင်တွဲ မရှိပါ</div>';
+      return;
+    }
+    dirs.forEach(dir => {
+      const row = document.createElement('div');
+      row.className = 'history-item';
+      row.style.cursor = 'pointer';
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.padding = '8px 10px';
+      row.style.borderRadius = '6px';
+      const icon = dir.path && dir.path.length <= 3 ? '💾' : '📁';
+      row.innerHTML = `<span>${icon}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(dir.name)}</span><span style="color:var(--text-muted);font-size:12px;">›</span>`;
+      row.onclick = () => loadFolderBrowser(dir.path);
+      fbListEl.appendChild(row);
+    });
+  }
+
+  function applyFolderChange(newPath) {
+    fetch('/api/cwd', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initialPath: initial })
+      body: JSON.stringify({ cwd: newPath })
     })
       .then(r => r.json())
       .then(data => {
-        if (data.success && data.cwd) {
+        if (data.success) {
           currentCwdSpan.textContent = data.cwd;
           if (folderInputPath) folderInputPath.value = data.cwd;
           addRecentProject(data.cwd);
+          closeModal(modalFolderBrowser);
           closeModal(modalFolder);
           showToast(`📁 Project Folder ကို "${data.cwd}" သို့ ပြောင်းလဲပြီးပါပြီ`);
           if (ws && isWsConnected) {
             ws.send(JSON.stringify({ type: 'restart', shell: shellSelect.value, cwd: data.cwd }));
           }
-        } else if (data.error) {
-          alert(data.error);
+        } else {
+          alert('Folder ပြောင်းလဲမှု မအောင်မြင်ပါ: ' + (data.error || 'လမ်းကြောင်း မှားယွင်းနေပါသည်'));
         }
       })
       .catch(err => alert(formatNetworkError(err)));
   }
 
+  if (fbUpBtn) fbUpBtn.addEventListener('click', () => {
+    if (fbParentPath) loadFolderBrowser(fbParentPath);
+    else loadFolderBrowser(null);
+  });
+  if (fbThisPcBtn) fbThisPcBtn.addEventListener('click', () => loadFolderBrowser(null));
+  if (fbSelectBtn) fbSelectBtn.addEventListener('click', () => {
+    if (fbCurrentPath) applyFolderChange(fbCurrentPath);
+  });
 
   if (browseFolderBtn) {
     browseFolderBtn.addEventListener('click', browseWindowsFolder);
@@ -702,31 +776,7 @@ try {
   confirmFolderBtn.addEventListener('click', () => {
     const newPath = folderInputPath.value.trim();
     if (!newPath) return;
-
-    fetch('/api/cwd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cwd: newPath })
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        currentCwdSpan.textContent = data.cwd;
-        folderInputPath.value = data.cwd;
-        addRecentProject(data.cwd);
-        closeModal(modalFolder);
-        showToast(`📁 Project Folder ကို "${data.cwd}" သို့ ပြောင်းလဲပြီးပါပြီ`);
-        // Restart terminal in new directory
-        if (ws && isWsConnected) {
-          ws.send(JSON.stringify({ type: 'restart', shell: shellSelect.value, cwd: data.cwd }));
-        }
-      } else {
-        alert('Directory ပြောင်းလဲမှု မအောင်မြင်ပါ: ' + (data.error || 'လမ်းကြောင်း မှားယွင်းနေပါသည်'));
-      }
-    })
-    .catch(err => {
-      alert(formatNetworkError(err));
-    });
+    applyFolderChange(newPath);
   });
 
   const settingGeminiKey = document.getElementById('setting-gemini-key');

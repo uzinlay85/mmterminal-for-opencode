@@ -407,6 +407,29 @@
     </section>
 
   </main>
+
+  <!-- In-App Folder Browser Modal -->
+  <div id="modal-folder-browser" class="modal-overlay notranslate">
+    <div class="modal-box notranslate" style="max-width: 640px;">
+      <div class="modal-header notranslate">
+        <span>📂 Project Folder ရွေးချယ်ခြင်း</span>
+        <button class="close-btn" data-close="modal-folder-browser">&times;</button>
+      </div>
+      <div class="modal-body notranslate">
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+          <button id="btn-fb-up" class="action-btn notranslate" title="အထက်တစ်ဆင့်">⬆️ အထက်</button>
+          <button id="btn-fb-thispc" class="action-btn notranslate" title="Drive များ">💻 This PC</button>
+          <input type="text" id="fb-path" class="setting-input notranslate" style="flex: 1; font-family: var(--font-mono); font-size: 12px;" readonly>
+        </div>
+        <div id="fb-list" class="notranslate" style="max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--border-color); border-radius: 8px; padding: 6px; background: var(--bg-primary); margin-bottom: 12px;"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <span id="fb-current" style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;"></span>
+          <button id="btn-fb-select" class="action-btn btn-primary notranslate">✅ ဤ Folder ကို ရွေးမည်</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Folder Change Modal -->
   <div id="modal-folder" class="modal-overlay notranslate">
     <div class="modal-box notranslate">
