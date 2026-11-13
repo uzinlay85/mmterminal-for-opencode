@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Must match API_VERSION in server.js. If the running backend is older (e.g. the
   // server was left running from a previous version) the UI says so instead of
   // throwing cryptic parse errors.
-  const EXPECTED_API_VERSION = 12;
+  const EXPECTED_API_VERSION = 13;
 
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
@@ -1636,13 +1636,23 @@ try {
   setInterval(() => loadModelsFromCli(true), MODELS_AUTO_REFRESH_MS);
 
   // ============================================================
-  // Tab 4: Gemini AI Interactive Chat & Composer Engine
+  // Tab 4: Gemini AI Interactive WebUI (OpenCode WebUI Style)
   // ============================================================
   const geminiModelSelect = document.getElementById('gemini-model-select');
+  const geminiActiveModelBadge = document.getElementById('gemini-active-model-badge');
+  const geminiCurrentSessionTitle = document.getElementById('gemini-current-session-title');
   const geminiKeyStatus = document.getElementById('gemini-key-status');
   const btnGeminiOpenSettings = document.getElementById('btn-gemini-open-settings');
   const btnGeminiLaunchCli = document.getElementById('btn-gemini-launch-cli');
-  const btnGeminiClear = document.getElementById('btn-gemini-clear');
+  const btnGeminiNewChat = document.getElementById('btn-gemini-new-chat');
+  const btnGeminiClearAllSessions = document.getElementById('btn-gemini-clear-all-sessions');
+  const geminiSessionsList = document.getElementById('gemini-sessions-list');
+  const btnGeminiAttachFile = document.getElementById('btn-gemini-attach-file');
+  const btnGeminiOpenBrowser = document.getElementById('btn-gemini-open-browser');
+  const geminiAttachedFilesBar = document.getElementById('gemini-attached-files-bar');
+  const geminiAttachedChips = document.getElementById('gemini-attached-chips');
+  const modalGeminiFile = document.getElementById('modal-gemini-file');
+  const geminiFileList = document.getElementById('gemini-file-list');
   const geminiChatContainer = document.getElementById('gemini-chat-container');
   const geminiPromptTemplates = document.getElementById('gemini-prompt-templates');
   const geminiPromptInput = document.getElementById('gemini-prompt-input');
@@ -1652,10 +1662,239 @@ try {
   const btnGeminiStop = document.getElementById('btn-gemini-stop');
   const btnGeminiSend = document.getElementById('btn-gemini-send');
 
+  // Sessions and Context State
+  let geminiSessions = [];
+  try {
+    geminiSessions = JSON.parse(localStorage.getItem('mm_gemini_sessions') || '[]');
+    if (!Array.isArray(geminiSessions)) geminiSessions = [];
+  } catch (e) {
+    geminiSessions = [];
+  }
+
+  let currentGeminiSessionId = null;
   let geminiConversationHistory = [];
+  let geminiAttachedFiles = [];
   let geminiCurrentAbortController = null;
 
   window.__showGeminiCopyToast = () => showToast('📋 Code ကို Copy ကူးပြီးပါပြီ');
+
+  function saveGeminiSessions() {
+    try {
+      localStorage.setItem('mm_gemini_sessions', JSON.stringify(geminiSessions));
+    } catch (e) {}
+  }
+
+  function renderGeminiSessions() {
+    if (!geminiSessionsList) return;
+    geminiSessionsList.innerHTML = '';
+
+    if (!geminiSessions.length) {
+      geminiSessionsList.innerHTML = `
+        <div style="font-size: 11.5px; color: var(--text-muted); text-align: center; padding: 16px 8px;">
+          စကားဝိုင်း မရှိသေးပါ<br>"စကားဝိုင်းအသစ်" စတင်ပါ
+        </div>
+      `;
+      return;
+    }
+
+    geminiSessions.forEach(session => {
+      const item = document.createElement('div');
+      item.className = 'gemini-session-item notranslate' + (session.id === currentGeminiSessionId ? ' active' : '');
+      
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'gemini-session-title';
+      titleSpan.textContent = session.title || 'စကားဝိုင်း';
+      titleSpan.title = session.title || 'စကားဝိုင်း';
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'gemini-session-delete notranslate';
+      delBtn.textContent = '✕';
+      delBtn.title = 'ဖျက်မည်';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteGeminiSession(session.id);
+      };
+
+      item.appendChild(titleSpan);
+      item.appendChild(delBtn);
+
+      item.onclick = () => {
+        switchGeminiSession(session.id);
+      };
+
+      geminiSessionsList.appendChild(item);
+    });
+  }
+
+  function createGeminiNewChat() {
+    currentGeminiSessionId = null;
+    geminiConversationHistory = [];
+    geminiAttachedFiles = [];
+    renderAttachedChips();
+    if (geminiCurrentSessionTitle) geminiCurrentSessionTitle.textContent = '✨ စကားဝိုင်းအသစ်';
+    renderGeminiSessions();
+    if (geminiChatContainer) {
+      geminiChatContainer.innerHTML = `
+        <div class="gemini-msg gemini-msg-assistant notranslate">
+          <div class="gemini-msg-header">
+            <span class="gemini-avatar">✨</span>
+            <span class="gemini-name">Gemini AI</span>
+            <span class="gemini-model-badge">Google Generative AI</span>
+          </div>
+          <div class="gemini-msg-body">
+            မင်္ဂလာပါခင်ဗျာ! Google Gemini Web UI မှ ကြိုဆိုပါတယ်။ OpenCode WebUI နည်းတူ မြန်မာဘာသာဖြင့် စကားဝိုင်းများ မေးမြန်းခြင်း၊ Project ဖိုင်များ ထည့်သွင်းဆွေးနွေးခြင်းနှင့် Coding ပြဿနာ ဖြေရှင်းခြင်းများကို ကူညီပေးနိုင်ပါသည်။
+          </div>
+        </div>
+      `;
+    }
+    if (geminiPromptInput) geminiPromptInput.focus();
+  }
+
+  function switchGeminiSession(id) {
+    const session = geminiSessions.find(s => s.id === id);
+    if (!session) return;
+    currentGeminiSessionId = session.id;
+    geminiConversationHistory = session.messages ? [...session.messages] : [];
+    if (geminiCurrentSessionTitle) geminiCurrentSessionTitle.textContent = session.title || 'စကားဝိုင်း';
+    if (session.model && geminiModelSelect) {
+      geminiModelSelect.value = session.model;
+      if (geminiActiveModelBadge) geminiActiveModelBadge.textContent = session.model;
+    }
+    renderGeminiSessions();
+
+    if (!geminiChatContainer) return;
+    geminiChatContainer.innerHTML = '';
+    if (!geminiConversationHistory.length) {
+      createGeminiNewChat();
+      return;
+    }
+
+    geminiConversationHistory.forEach(msg => {
+      const msgEl = document.createElement('div');
+      if (msg.role === 'user') {
+        msgEl.className = 'gemini-msg gemini-msg-user notranslate';
+        msgEl.innerHTML = `
+          <div class="gemini-msg-header">
+            <span class="gemini-avatar">👤</span>
+            <span class="gemini-name">သင်</span>
+          </div>
+          <div class="gemini-msg-body">${escapeHtml(msg.text)}</div>
+        `;
+      } else {
+        msgEl.className = 'gemini-msg gemini-msg-assistant notranslate';
+        msgEl.innerHTML = `
+          <div class="gemini-msg-header">
+            <span class="gemini-avatar">✨</span>
+            <span class="gemini-name">Gemini AI</span>
+            <span class="gemini-model-badge">${session.model || 'Gemini'}</span>
+          </div>
+          <div class="gemini-msg-body">${formatGeminiText(msg.text)}</div>
+        `;
+      }
+      geminiChatContainer.appendChild(msgEl);
+    });
+
+    geminiChatContainer.scrollTop = geminiChatContainer.scrollHeight;
+  }
+
+  function deleteGeminiSession(id) {
+    geminiSessions = geminiSessions.filter(s => s.id !== id);
+    saveGeminiSessions();
+    if (currentGeminiSessionId === id) {
+      if (geminiSessions.length) {
+        switchGeminiSession(geminiSessions[0].id);
+      } else {
+        createGeminiNewChat();
+      }
+    } else {
+      renderGeminiSessions();
+    }
+    showToast('🗑️ စကားဝိုင်းကို ဖျက်ပြီးပါပြီ');
+  }
+
+  function renderAttachedChips() {
+    if (!geminiAttachedChips || !geminiAttachedFilesBar) return;
+    geminiAttachedChips.innerHTML = '';
+    if (!geminiAttachedFiles.length) {
+      geminiAttachedFilesBar.style.display = 'none';
+      return;
+    }
+    geminiAttachedFilesBar.style.display = 'flex';
+    geminiAttachedFiles.forEach((file, index) => {
+      const chip = document.createElement('span');
+      chip.className = 'attached-file-chip notranslate';
+      chip.innerHTML = `
+        <span>📄 ${escapeHtml(file.name)}</span>
+        <span class="remove-chip" title="ဖယ်ရှားမည်" data-index="${index}">&times;</span>
+      `;
+      chip.querySelector('.remove-chip').onclick = () => {
+        geminiAttachedFiles.splice(index, 1);
+        renderAttachedChips();
+      };
+      geminiAttachedChips.appendChild(chip);
+    });
+  }
+
+  function openGeminiFilePicker() {
+    if (!geminiFileList) return;
+    geminiFileList.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted);">ဖိုင်စာရင်း ရယူနေပါသည်...</div>';
+    openModal(modalGeminiFile);
+
+    fetch('/api/project-files')
+      .then(r => r.json())
+      .then(data => {
+        const files = (data && data.files) || [];
+        if (!files.length) {
+          geminiFileList.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted);">ဖိုင်များ မတွေ့ရှိပါ</div>';
+          return;
+        }
+
+        geminiFileList.innerHTML = '';
+        files.forEach(f => {
+          const btn = document.createElement('button');
+          btn.className = 'action-btn notranslate';
+          btn.style.cssText = 'justify-content: space-between; text-align: left; padding: 8px 12px; font-family: var(--font-mono); font-size: 12px; width: 100%;';
+          const sizeKb = (f.size / 1024).toFixed(1);
+          btn.innerHTML = `
+            <span>📄 ${escapeHtml(f.name)}</span>
+            <span style="color: var(--text-muted); font-size: 11px;">${sizeKb} KB</span>
+          `;
+          btn.onclick = () => {
+            fetchFileAndAttach(f.path, f.name);
+          };
+          geminiFileList.appendChild(btn);
+        });
+      })
+      .catch(err => {
+        geminiFileList.innerHTML = `<div style="color: #ff7b72; padding: 10px;">Error: ${err.message}</div>`;
+      });
+  }
+
+  function fetchFileAndAttach(filePath, fileName) {
+    fetch('/api/file-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.content) {
+        if (!geminiAttachedFiles.some(f => f.path === data.path)) {
+          geminiAttachedFiles.push({
+            name: fileName,
+            path: data.path,
+            content: data.content
+          });
+          renderAttachedChips();
+          showToast(`📎 "${fileName}" ကို Context ထဲ ထည့်သွင်းပြီးပါပြီ`);
+        }
+        closeModal(modalGeminiFile);
+      } else {
+        alert(data.error || 'ဖိုင်ဖတ်မရပါ');
+      }
+    })
+    .catch(err => alert(err.message));
+  }
 
   function checkGeminiStatus() {
     fetch('/api/gemini/status')
@@ -1751,22 +1990,43 @@ try {
     btnGeminiLaunchCli.addEventListener('click', launchGeminiCliInTerm);
   }
 
-  if (btnGeminiClear) {
-    btnGeminiClear.addEventListener('click', () => {
-      geminiConversationHistory = [];
-      geminiChatContainer.innerHTML = `
-        <div class="gemini-msg gemini-msg-assistant notranslate">
-          <div class="gemini-msg-header">
-            <span class="gemini-avatar">✨</span>
-            <span class="gemini-name">Gemini AI</span>
-            <span class="gemini-model-badge">Google Generative AI</span>
-          </div>
-          <div class="gemini-msg-body">
-            စကားဝိုင်းကို ရှင်းလင်းလိုက်ပါပြီ။ မေးမြန်းလိုသည်များကို အသစ်ပြန်လည် စတင်နိုင်ပါပြီခင်ဗျာ။
-          </div>
-        </div>
-      `;
-      showToast('🧹 Gemini စကားဝိုင်းကို ရှင်းလင်းလိုက်ပါပြီ');
+  if (btnGeminiNewChat) {
+    btnGeminiNewChat.addEventListener('click', createGeminiNewChat);
+  }
+
+  if (btnGeminiClearAllSessions) {
+    btnGeminiClearAllSessions.addEventListener('click', () => {
+      if (confirm('စကားဝိုင်း မှတ်တမ်းအားလုံးကို ဖျက်ပစ်ရန် သေချာပါသလား?')) {
+        geminiSessions = [];
+        saveGeminiSessions();
+        createGeminiNewChat();
+        showToast('🗑️ စကားဝိုင်းအားလုံးကို ဖျက်ပြီးပါပြီ');
+      }
+    });
+  }
+
+  if (btnGeminiAttachFile) {
+    btnGeminiAttachFile.addEventListener('click', openGeminiFilePicker);
+  }
+
+  if (btnGeminiOpenBrowser) {
+    btnGeminiOpenBrowser.addEventListener('click', () => {
+      window.open('/?tab=gemini', '_blank');
+    });
+  }
+
+  if (geminiModelSelect) {
+    geminiModelSelect.addEventListener('change', () => {
+      if (geminiActiveModelBadge) {
+        geminiActiveModelBadge.textContent = geminiModelSelect.value;
+      }
+      if (currentGeminiSessionId) {
+        const sess = geminiSessions.find(s => s.id === currentGeminiSessionId);
+        if (sess) {
+          sess.model = geminiModelSelect.value;
+          saveGeminiSessions();
+        }
+      }
     });
   }
 
@@ -1845,13 +2105,16 @@ try {
     const abortController = new AbortController();
     geminiCurrentAbortController = abortController;
 
+    const filesToSend = [...geminiAttachedFiles];
+
     fetch('/api/gemini/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt,
         model,
-        history: geminiConversationHistory
+        history: geminiConversationHistory,
+        files: filesToSend
       }),
       signal: abortController.signal
     })
@@ -1872,6 +2135,33 @@ try {
               bodyEl.innerHTML = formatGeminiText(fullAnswer);
               geminiConversationHistory.push({ role: 'user', text: prompt });
               geminiConversationHistory.push({ role: 'model', text: fullAnswer });
+
+              // Sync to Session Storage
+              if (!currentGeminiSessionId) {
+                const newId = 'gemini_' + Date.now();
+                currentGeminiSessionId = newId;
+                const newSession = {
+                  id: newId,
+                  title: prompt.length > 36 ? prompt.slice(0, 36) + '...' : prompt,
+                  createdAt: Date.now(),
+                  model,
+                  messages: [...geminiConversationHistory]
+                };
+                geminiSessions.unshift(newSession);
+                if (geminiCurrentSessionTitle) geminiCurrentSessionTitle.textContent = newSession.title;
+              } else {
+                const sess = geminiSessions.find(s => s.id === currentGeminiSessionId);
+                if (sess) {
+                  sess.messages = [...geminiConversationHistory];
+                  sess.model = model;
+                }
+              }
+              saveGeminiSessions();
+              renderGeminiSessions();
+
+              // Clear attached files for next prompt
+              geminiAttachedFiles = [];
+              renderAttachedChips();
               showToast('✅ Gemini မှ ဖြေကြားပြီးပါပြီ');
             }
             return;
@@ -1934,4 +2224,16 @@ try {
   loadAccounts();
   loadUsage(false);
   checkGeminiStatus();
+  renderGeminiSessions();
+  if (geminiSessions.length) {
+    switchGeminiSession(geminiSessions[0].id);
+  } else {
+    createGeminiNewChat();
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'gemini' || window.location.hash === '#gemini') {
+    const geminiTabBtn = document.querySelector('.tab-btn[data-tab="gemini"]');
+    if (geminiTabBtn) geminiTabBtn.click();
+  }
 });

@@ -6,14 +6,15 @@ const nodeGlobals = {
   console: 'readonly', Buffer: 'readonly', URL: 'readonly',
   setTimeout: 'readonly', clearTimeout: 'readonly',
   setInterval: 'readonly', clearInterval: 'readonly',
-  fetch: 'readonly', AbortController: 'readonly', TextDecoder: 'readonly'
+  fetch: 'readonly', AbortController: 'readonly', TextDecoder: 'readonly',
+  URLSearchParams: 'readonly'
 };
 
 const browserGlobals = {
   window: 'readonly', document: 'readonly', localStorage: 'readonly',
   navigator: 'readonly', fetch: 'readonly', WebSocket: 'readonly',
   Terminal: 'readonly', FitAddon: 'readonly', TextDecoder: 'readonly',
-  AbortController: 'readonly',
+  AbortController: 'readonly', URLSearchParams: 'readonly',
   confirm: 'readonly', alert: 'readonly', self: 'readonly', define: 'readonly',
   module: 'readonly',
   setTimeout: 'readonly', clearTimeout: 'readonly',

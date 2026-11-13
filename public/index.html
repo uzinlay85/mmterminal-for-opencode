@@ -275,93 +275,134 @@
       </div>
     </section>
 
-    <!-- Tab 4: Dedicated Gemini AI Interface -->
+    <!-- Tab 4: Dedicated Gemini AI Web Interface (OpenCode WebUI Style) -->
     <section id="pane-gemini" class="tab-pane notranslate">
-      <div class="gemini-container notranslate">
-        <!-- Gemini Top Control Bar -->
-        <div class="gemini-top-bar notranslate">
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span style="font-weight: 600; font-size: 13px; color: #fff;">✨ Model:</span>
-            <select id="gemini-model-select" class="setting-input notranslate" style="width: auto; min-width: 220px; font-size: 12px; padding: 4px 10px;">
-              <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (⚡ မြန်ဆန်/Recommended)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (🧠 အနက်ရှိုင်းဆုံး စဉ်းစားနိုင်)</option>
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash (⚡ မျိုးဆက်သစ် အမြန်)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (📚 Context ရှည်လျားစွာ နားလည်)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (ပေါ့ပါးမြန်ဆန်)</option>
+      <div class="gemini-app-layout notranslate">
+        
+        <!-- Left Sidebar: Sessions & Model Config -->
+        <aside class="gemini-sidebar notranslate">
+          <div class="gemini-sidebar-header notranslate">
+            <button id="btn-gemini-new-chat" class="action-btn btn-primary notranslate" style="width: 100%; justify-content: center; padding: 9px 12px; font-weight: 600;">
+              <span>➕ စကားဝိုင်းအသစ် (New Chat)</span>
+            </button>
+          </div>
+
+          <!-- Session List -->
+          <div class="gemini-sessions-section notranslate">
+            <div style="font-size: 11px; font-weight: 600; color: #58a6ff; margin-bottom: 6px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+              <span>💬 စကားဝိုင်းများ (Sessions)</span>
+              <button id="btn-gemini-clear-all-sessions" class="tool-chip notranslate" style="font-size: 10px; padding: 1px 5px; color: #f85149;" title="စကားဝိုင်း အားလုံး ဖျက်မည်">🗑️ ရှင်းမည်</button>
+            </div>
+            <div id="gemini-sessions-list" class="gemini-sessions-list notranslate">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Sidebar Footer Settings -->
+          <div class="gemini-sidebar-footer notranslate">
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">🤖 Model ရွေးချယ်မှု:</div>
+            <select id="gemini-model-select" class="setting-input notranslate" style="width: 100%; font-size: 12px; margin-bottom: 8px;">
+              <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (⚡ မြန်ဆန်)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (🧠 စဉ်းစားတွေးခေါ်နိုင်)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash (⚡ မျိုးဆက်သစ်)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (📚 Context ရှည်)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (ပေါ့ပါး)</option>
             </select>
-            <div id="gemini-key-status" class="tool-chip notranslate" style="font-size: 11px;">
-              <span>🔑 စစ်ဆေးနေပါသည်...</span>
+            <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between;">
+              <div id="gemini-key-status" class="tool-chip notranslate" style="font-size: 11px; flex: 1; justify-content: center;">
+                <span>🔑 စစ်ဆေးနေပါသည်...</span>
+              </div>
+              <button id="btn-gemini-open-settings" class="tool-chip notranslate" style="color: #58a6ff; font-weight: 500;" title="Gemini API Key ထည့်သွင်း/ပြင်ဆင်ရန် Settings ဖွင့်မည်">⚙️ ပြင်မည်</button>
             </div>
-            <button id="btn-gemini-open-settings" class="tool-chip notranslate" style="color: #58a6ff; font-weight: 500;" title="Gemini API Key ထည့်သွင်း/ပြင်ဆင်ရန် Settings ဖွင့်မည်">⚙️ Key ပြင်မည်</button>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <button id="btn-gemini-launch-cli" class="action-btn notranslate" style="color: #58a6ff; font-size: 12px; padding: 4px 10px;" title="Terminal Tab တွင် Gemini CLI ဖြင့် အသုံးပြုမည်">
-              <span>🖥️ Terminal CLI ဖွင့်မည်</span>
-            </button>
-            <button id="btn-gemini-clear" class="action-btn notranslate" style="font-size: 12px; padding: 4px 10px;" title="စကားဝိုင်း အားလုံး ရှင်းလင်းမည်">
-              <span>🧹 စကားဝိုင်းရှင်းမည်</span>
-            </button>
-          </div>
-        </div>
+        </aside>
 
-        <!-- Gemini Chat Message Stream -->
-        <div id="gemini-chat-container" class="gemini-chat-area notranslate">
-          <!-- Initial Welcome Message -->
-          <div class="gemini-msg gemini-msg-assistant notranslate">
-            <div class="gemini-msg-header">
-              <span class="gemini-avatar">✨</span>
-              <span class="gemini-name">Gemini AI</span>
-              <span class="gemini-model-badge">Google Generative AI</span>
+        <!-- Right Main: Chat Area & Composer -->
+        <main class="gemini-main notranslate">
+          <!-- Topbar -->
+          <div class="gemini-top-bar notranslate">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+              <span id="gemini-current-session-title" style="font-weight: 600; font-size: 13.5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">✨ စကားဝိုင်းအသစ်</span>
+              <span id="gemini-active-model-badge" class="brand-badge" style="font-size: 10px;">Gemini 2.5 Flash</span>
             </div>
-            <div class="gemini-msg-body">
-              မင်္ဂလာပါခင်ဗျာ! Google Gemini AI စနစ်မှ ကြိုဆိုပါတယ်။ မြန်မာဘာသာဖြင့် မေးခွန်းများ မေးမြန်းခြင်း၊ Code ရေးသားခြင်း၊ စာသားဘာသာပြန်ခြင်းနှင့် စနစ်ပြဿနာ ဖြေရှင်းခြင်းများကို ကူညီဆောင်ရွက်ပေးနိုင်ပါသည်။
-              <br><br>
-              💡 <em>အကြံပြုချက်- အောက်ပါအကွက်တွင် မြန်မာလို အလွယ်တကူ ရိုက်ထည့်ပြီး မေးမြန်းနိုင်ပါသည် (Zawgyi ဖြင့် ရိုက်ထည့်ပါကလည်း Unicode သို့ အလိုအလျောက် ပြောင်းပေးပါသည်)။</em>
-            </div>
-          </div>
-        </div>
-
-        <!-- Gemini Burmese Composer Dock -->
-        <div class="gemini-composer-dock notranslate">
-          <div class="composer-top-bar notranslate">
-            <div class="char-buttons notranslate">
-              <span style="font-size: 11px; color: var(--text-muted); margin-right: 4px;">အက္ခရာများ:</span>
-              <button class="char-btn notranslate gemini-char-btn" data-char="ႂ">ႂ</button>
-              <button class="char-btn notranslate gemini-char-btn" data-char="ႃ">ႃ</button>
-              <button class="char-btn notranslate gemini-char-btn" data-char="ၠ">ၠ</button>
-              <button class="char-btn notranslate gemini-char-btn" data-char="ၡ">ၡ</button>
-              <button class="char-btn notranslate gemini-char-btn" data-char="ၢ">ၢ</button>
-              <button class="char-btn notranslate gemini-char-btn" data-char="ၣ">ၣ</button>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <select id="gemini-prompt-templates" class="templates-dropdown notranslate">
-                <option value="" selected>✨ နမူနာ မေးခွန်းများ (Templates)...</option>
-                <option value="အောက်ပါ ကုဒ်ကို မြန်မာလို အဆင့်ဆင့် ရှင်းပြပေးပါ:">📖 ကုဒ် ရှင်းပြခိုင်းရန်</option>
-                <option value="အောက်ပါ error ကို ဘာကြောင့်ဖြစ်တာလဲနှင့် ဖြေရှင်းနည်း ပြောပြပေးပါ:">🐛 Error ရှာဖွေ ပြင်ဆင်ရန်</option>
-                <option value="Python ဖြင့် Clean Architecture အတိုင်း ရေးသားထားသော ဥပမာတစ်ခု ရေးပေးပါ:">💻 ကုဒ်ရေးသားခိုင်းရန်</option>
-                <option value="အောက်ပါ စာသားကို သဘာဝကျသော မြန်မာစကားပြေဖြင့် ဘာသာပြန်ပေးပါ:">🌐 ဘာသာပြန်ခိုင်းရန်</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="composer-input-wrapper notranslate">
-            <textarea id="gemini-prompt-input" class="notranslate" rows="2" placeholder="Gemini ထံသို့ မြန်မာလို မေးလိုသည်ကို ရိုက်ထည့်ပါ... (Enter နှိပ်၍ ပေးပို့ပါ၊ Shift+Enter စာကြောင်းဆင်းပါ)"></textarea>
-          </div>
-
-          <div class="composer-bottom-bar notranslate" style="margin-top: 8px;">
-            <div class="bottom-left-tools notranslate">
-              <span id="gemini-char-counter">0 စာလုံး</span>
-              <span id="gemini-zawgyi-badge" class="tool-chip notranslate" style="display: none; background: #9e6a03; color: #fff; cursor: pointer;">⚠️ Zawgyi ဖြစ်နေသည် (နှိပ်၍ ပြင်ပါ)</span>
-            </div>
-            <div class="bottom-right-actions notranslate">
-              <button id="btn-gemini-clear-prompt" class="action-btn notranslate" title="ရိုက်ထားသော စာသား ရှင်းမည်">ရှင်းမည်</button>
-              <button id="btn-gemini-stop" class="action-btn notranslate" style="display: none; color: #f85149; border-color: rgba(248,81,73,0.3);">⏹️ ရပ်မည်</button>
-              <button id="btn-gemini-send" class="send-btn notranslate" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
-                <span>✨ မေးမည်</span>
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+              <button id="btn-gemini-attach-file" class="action-btn notranslate" style="font-size: 12px; padding: 4px 10px; color: #58a6ff;" title="Project ထဲရှိ ဖိုင်တစ်ခုအား မေးခွန်းထဲ ထည့်သွင်းမေးမည်">
+                <span>📎 ဖိုင်ထည့်မည် (Attach)</span>
+              </button>
+              <button id="btn-gemini-open-browser" class="action-btn notranslate" style="font-size: 12px; padding: 4px 10px;" title="Chrome/Edge Browser သီးသန့် Window ဖြင့် ဖွင့်မည်">
+                <span>🌐 Browser ဖြင့် ဖွင့်မည်</span>
+              </button>
+              <button id="btn-gemini-launch-cli" class="action-btn notranslate" style="font-size: 12px; padding: 4px 10px;" title="Terminal Tab တွင် Gemini CLI ဖြင့် အသုံးပြုမည်">
+                <span>🖥️ Terminal CLI</span>
               </button>
             </div>
           </div>
-        </div>
+
+          <!-- Attached Files Context Banner -->
+          <div id="gemini-attached-files-bar" class="gemini-attached-bar notranslate" style="display: none;">
+            <span style="font-size: 11px; color: #58a6ff; font-weight: 600;">📎 ထည့်သွင်းထားသော ဖိုင်များ:</span>
+            <div id="gemini-attached-chips" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+          </div>
+
+          <!-- Chat Messages Stream -->
+          <div id="gemini-chat-container" class="gemini-chat-area notranslate">
+            <!-- Initial Welcome Message -->
+            <div class="gemini-msg gemini-msg-assistant notranslate">
+              <div class="gemini-msg-header">
+                <span class="gemini-avatar">✨</span>
+                <span class="gemini-name">Gemini AI</span>
+                <span class="gemini-model-badge">Google Generative AI</span>
+              </div>
+              <div class="gemini-msg-body">
+                မင်္ဂလာပါခင်ဗျာ! Google Gemini Web UI စနစ်မှ ကြိုဆိုပါတယ်။ OpenCode WebUI နည်းတူ မြန်မာဘာသာဖြင့် စကားဝိုင်းများ ပြုလုပ်ခြင်း၊ Project ဖိုင်များ ထည့်သွင်းမေးမြန်းခြင်းနှင့် ကုဒ်ရေးသားခြင်းများကို အဆင်ပြေစွာ ဆောင်ရွက်နိုင်ပါသည်။
+                <br><br>
+                💡 <em>အကြံပြုချက်- ဘယ်ဘက်ခြမ်းရှိ <b>"➕ စကားဝိုင်းအသစ်"</b> ဖြင့် Chat အသစ်များ စတင်နိုင်ပြီး အပေါ်ရှိ <b>"📎 ဖိုင်ထည့်မည်"</b> ဖြင့် Project ဖိုင်များကို Gemini အား သုံးသပ်ခိုင်းနိုင်ပါသည်။</em>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Composer Dock -->
+          <div class="gemini-composer-dock notranslate">
+            <div class="composer-top-bar notranslate">
+              <div class="char-buttons notranslate">
+                <span style="font-size: 11px; color: var(--text-muted); margin-right: 4px;">အက္ခရာများ:</span>
+                <button class="char-btn notranslate gemini-char-btn" data-char="ႂ">ႂ</button>
+                <button class="char-btn notranslate gemini-char-btn" data-char="ႃ">ႃ</button>
+                <button class="char-btn notranslate gemini-char-btn" data-char="ၠ">ၠ</button>
+                <button class="char-btn notranslate gemini-char-btn" data-char="ၡ">ၡ</button>
+                <button class="char-btn notranslate gemini-char-btn" data-char="ၢ">ၢ</button>
+                <button class="char-btn notranslate gemini-char-btn" data-char="ၣ">ၣ</button>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="gemini-prompt-templates" class="templates-dropdown notranslate">
+                  <option value="" selected>✨ နမူနာ မေးခွန်းများ (Templates)...</option>
+                  <option value="အောက်ပါ ကုဒ်ကို မြန်မာလို အဆင့်ဆင့် ရှင်းပြပေးပါ:">📖 ကုဒ် ရှင်းပြခိုင်းရန်</option>
+                  <option value="အောက်ပါ error ကို ဘာကြောင့်ဖြစ်တာလဲနှင့် ဖြေရှင်းနည်း ပြောပြပေးပါ:">🐛 Error ရှာဖွေ ပြင်ဆင်ရန်</option>
+                  <option value="Python ဖြင့် Clean Architecture အတိုင်း ရေးသားထားသော ဥပမာတစ်ခု ရေးပေးပါ:">💻 ကုဒ်ရေးသားခိုင်းရန်</option>
+                  <option value="အောက်ပါ စာသားကို သဘာဝကျသော မြန်မာစကားပြေဖြင့် ဘာသာပြန်ပေးပါ:">🌐 ဘာသာပြန်ခိုင်းရန်</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="composer-input-wrapper notranslate">
+              <textarea id="gemini-prompt-input" class="notranslate" rows="2" placeholder="Gemini ထံသို့ မြန်မာလို မေးလိုသည်ကို ရိုက်ထည့်ပါ... (Enter နှိပ်၍ ပေးပို့ပါ၊ Shift+Enter စာကြောင်းဆင်းပါ)"></textarea>
+            </div>
+
+            <div class="composer-bottom-bar notranslate" style="margin-top: 8px;">
+              <div class="bottom-left-tools notranslate">
+                <span id="gemini-char-counter">0 စာလုံး</span>
+                <span id="gemini-zawgyi-badge" class="tool-chip notranslate" style="display: none; background: #9e6a03; color: #fff; cursor: pointer;">⚠️ Zawgyi ဖြစ်နေသည် (နှိပ်၍ ပြင်ပါ)</span>
+              </div>
+              <div class="bottom-right-actions notranslate">
+                <button id="btn-gemini-clear-prompt" class="action-btn notranslate" title="ရိုက်ထားသော စာသား ရှင်းမည်">ရှင်းမည်</button>
+                <button id="btn-gemini-stop" class="action-btn notranslate" style="display: none; color: #f85149; border-color: rgba(248,81,73,0.3);">⏹️ ရပ်မည်</button>
+                <button id="btn-gemini-send" class="send-btn notranslate" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
+                  <span>✨ မေးမည်</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </section>
 
@@ -394,6 +435,27 @@
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
           <button class="action-btn notranslate" data-close="modal-folder">မလုပ်တော့ပါ</button>
           <button id="btn-confirm-folder" class="action-btn btn-primary notranslate">အတည်ပြုမည်</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Attach Project File to Gemini -->
+  <div id="modal-gemini-file" class="modal-overlay notranslate">
+    <div class="modal-box notranslate" style="max-width: 540px;">
+      <div class="modal-header notranslate">
+        <span>📎 Project ဖိုင် ရွေးချယ်ထည့်သွင်းခြင်း</span>
+        <button class="close-btn" data-close="modal-gemini-file">&times;</button>
+      </div>
+      <div class="modal-body notranslate">
+        <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 10px;">
+          လက်ရှိ Project Folder ထဲရှိ ဖိုင်ကို ရွေးချယ်၍ Gemini အား အမှားရှာခိုင်းခြင်း၊ ကုဒ်သုံးသပ်ခိုင်းခြင်းများ ပြုလုပ်နိုင်ပါသည်:
+        </p>
+        <div id="gemini-file-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; margin-bottom: 12px;">
+          <!-- Populated by JS -->
+        </div>
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="action-btn notranslate" data-close="modal-gemini-file">ပိတ်မည်</button>
         </div>
       </div>
     </div>

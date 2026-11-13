@@ -889,14 +889,143 @@ body::before {
 #toast{z-index:2000;}
 
 /* ============================================================
-   Gemini AI Tab & Chat UI
+   Gemini AI Tab & OpenCode WebUI Style Layout
    ============================================================ */
-.gemini-container {
+.gemini-app-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+.gemini-sidebar {
+  width: 250px;
+  background: rgba(13, 17, 23, 0.85);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  backdrop-filter: blur(14px);
+  padding: 12px;
+  gap: 12px;
+}
+
+.gemini-sidebar-header {
+  flex-shrink: 0;
+}
+
+.gemini-sessions-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.gemini-sessions-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+.gemini-session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  color: var(--text-main);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gemini-session-item:hover {
+  background: var(--bg-elevated);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #fff;
+}
+
+.gemini-session-item.active {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: #3b82f6;
+  color: #fff;
+  font-weight: 500;
+}
+
+.gemini-session-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gemini-session-delete {
+  opacity: 0;
+  color: #f87171;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.gemini-session-item:hover .gemini-session-delete {
+  opacity: 1;
+}
+
+.gemini-sidebar-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color);
+  padding-top: 10px;
+}
+
+.gemini-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  position: relative;
+  background: var(--bg-primary);
+}
+
+.gemini-attached-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(59, 130, 246, 0.08);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.attached-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.attached-file-chip .remove-chip {
+  cursor: pointer;
+  color: #f87171;
+  font-weight: bold;
 }
 
 .gemini-top-bar {

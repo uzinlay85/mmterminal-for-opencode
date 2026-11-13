@@ -35,7 +35,7 @@ const PORT = process.env.PORT || 3820;
 // its own expectation so a long-running (stale) server is detected instead of
 // failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
 // parses this same line to decide whether a running server needs a restart.
-const API_VERSION = 12;
+const API_VERSION = 13;
 
 let currentCwd = process.cwd();
 
@@ -871,6 +871,71 @@ app.post('/api/opencode/run', (req, res) => {
   });
 });
 
+// Direct Route for Standalone Gemini Web UI tab
+app.get('/gemini', (req, res) => {
+  res.redirect('/?tab=gemini');
+});
+
+// API: List files in current project directory for quick attachment
+app.get('/api/project-files', (req, res) => {
+  try {
+    const requestedPath = req.query.dir ? path.resolve(req.query.dir) : currentCwd;
+    if (!fs.existsSync(requestedPath)) {
+      return res.status(404).json({ error: 'Folder does not exist' });
+    }
+    const entries = fs.readdirSync(requestedPath, { withFileTypes: true });
+    const files = [];
+    for (const ent of entries) {
+      if (ent.name.startsWith('.') || ent.name === 'node_modules') continue;
+      if (ent.isFile()) {
+        try {
+          const stat = fs.statSync(path.join(requestedPath, ent.name));
+          files.push({
+            name: ent.name,
+            path: path.join(requestedPath, ent.name),
+            size: stat.size
+          });
+        } catch (e) {}
+      }
+    }
+    res.json({ cwd: requestedPath, files });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Read a file safely from project workspace for AI context
+app.post('/api/file-content', (req, res) => {
+  const { filePath } = req.body || {};
+  if (!filePath || typeof filePath !== 'string') {
+    return res.status(400).json({ error: 'filePath is required' });
+  }
+
+  try {
+    const resolved = path.isAbsolute(filePath) ? path.resolve(filePath) : path.resolve(currentCwd, filePath);
+    if (!fs.existsSync(resolved)) {
+      return res.status(404).json({ error: 'File does not exist' });
+    }
+    const stat = fs.statSync(resolved);
+    if (!stat.isFile()) {
+      return res.status(400).json({ error: 'Target is not a regular file' });
+    }
+    if (stat.size > 1024 * 1024) {
+      return res.status(400).json({ error: 'File is too large (> 1MB)' });
+    }
+    const content = fs.readFileSync(resolved, 'utf8');
+    res.json({
+      success: true,
+      path: resolved,
+      filename: path.basename(resolved),
+      size: stat.size,
+      content
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Gemini Status and Available Models
 const GEMINI_MODELS = [
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'အလွန်မြန်ဆန်ပြီး စွမ်းဆောင်ရည်မြင့်မား (Recommended)' },
@@ -892,7 +957,7 @@ app.get('/api/gemini/status', (req, res) => {
 
 // API: Direct Gemini AI Runner & Chat (Streams response)
 app.post('/api/gemini/run', async (req, res) => {
-  const { prompt, model = 'gemini-2.5-flash', history = [] } = req.body || {};
+  const { prompt, model = 'gemini-2.5-flash', history = [], files = [] } = req.body || {};
   if (!prompt || typeof prompt !== 'string') {
     return res.status(400).send('Prompt is required');
   }
@@ -917,9 +982,16 @@ app.post('/api/gemini/run', async (req, res) => {
       }
     }
   }
+
+  let userText = prompt;
+  if (Array.isArray(files) && files.length > 0) {
+    const fileSnippets = files.map((f) => `=== [Project File: ${f.name || f.path}] ===\n${f.content}\n=== [End of File] ===`).join('\n\n');
+    userText = `[Attached Project Context Files]:\n\n${fileSnippets}\n\n[User Instruction]:\n${prompt}`;
+  }
+
   contents.push({
     role: 'user',
-    parts: [{ text: prompt }]
+    parts: [{ text: userText }]
   });
 
   const abortController = new AbortController();
