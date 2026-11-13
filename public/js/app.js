@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Must match API_VERSION in server.js. If the running backend is older (e.g. the
   // server was left running from a previous version) the UI says so instead of
   // throwing cryptic parse errors.
-  const EXPECTED_API_VERSION = 14;
+  const EXPECTED_API_VERSION = 15;
 
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
