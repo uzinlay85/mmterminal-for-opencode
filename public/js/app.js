@@ -538,16 +538,33 @@ try {
     });
   }
 
+  let serverGeminiCliPath = null;
+
   function launchGeminiCliInTerm() {
     const termTabBtn = document.querySelector('.tab-btn[data-tab="terminal"]');
     if (termTabBtn) termTabBtn.click();
-    if (ws && isWsConnected) {
-      ws.send(JSON.stringify({ type: 'input', data: '\x03' }));
-      setTimeout(() => {
-        ws.send(JSON.stringify({ type: 'input', data: 'npm run gemini\r' }));
-      }, 120);
-      showToast('✨ Gemini CLI ကို စတင်နေပါသည်...');
-      if (term) term.focus();
+    const trigger = () => {
+      if (ws && isWsConnected) {
+        ws.send(JSON.stringify({ type: 'input', data: '\x03' }));
+        setTimeout(() => {
+          const cliCmd = serverGeminiCliPath ? `node "${serverGeminiCliPath}"` : 'npm run gemini';
+          ws.send(JSON.stringify({ type: 'input', data: cliCmd + '\r' }));
+        }, 120);
+        showToast('✨ Gemini CLI ကို စတင်နေပါသည်...');
+        if (term) term.focus();
+      }
+    };
+
+    if (!serverGeminiCliPath) {
+      fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.geminiCliPath) serverGeminiCliPath = data.geminiCliPath;
+          trigger();
+        })
+        .catch(() => trigger());
+    } else {
+      trigger();
     }
   }
 
@@ -1586,6 +1603,9 @@ try {
           document.getElementById('status-text').textContent = 'OpenCode မရှိသေးပါ';
           // The header dot tracks the WebSocket connection (see setConnectionStatus),
           // so a missing CLI is reported through the text only.
+        }
+        if (data.geminiCliPath) {
+          serverGeminiCliPath = data.geminiCliPath;
         }
         if (data.cwd) {
           currentCwdSpan.textContent = data.cwd;

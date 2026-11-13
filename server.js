@@ -165,7 +165,8 @@ app.get('/api/status', (req, res) => {
     path: cachedOpenCode.path,
     cwd: currentCwd,
     nodeVersion: process.version,
-    platform: process.platform
+    platform: process.platform,
+    geminiCliPath: path.join(__dirname, 'scripts', 'gemini_cli.js')
   });
 });
 
