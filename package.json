@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "gemini": "node scripts/gemini_cli.js",
     "app": "cmd /c scripts\\launch.bat",
     "test": "node --test",
     "lint": "eslint ."

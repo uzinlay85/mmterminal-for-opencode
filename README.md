@@ -51,6 +51,10 @@ Windows ပေါ်တွင် **OpenCode AI Assistant** ကို အသု�
    - Account အသစ်များဖြင့် လွတ်လပ်စွာ ထပ်မံ Login ဝင်ရောက်နိုင်ပြီး ချိတ်ဆက်ထားသော Account များကို Visual စာရင်းမှ တစ်ချက်နှိပ်ရုံဖြင့် အလွယ်တကူ ပြောင်းလဲ (Switch) အသုံးပြုနိုင်ပါသည်။
    - Token limit သို့မဟုတ် Free Quota ကုန်သွားပါက အခြား Account သို့ ချက်ချင်း ပြောင်းသုံးနိုင်ပြီး Project ဖိုင်များနှင့် Git history များ လုံးဝ ပျက်ပြယ်ခြင်း မရှိဘဲ လုပ်လက်စ Project ပေါ်တွင်ပင် ဆက်လက် Coding ရေးသားနိုင်ပါသည်။
 
+10. **✨ Google Gemini CLI & Gemini AI စနစ်**:
+    - **Gemini CLI (Terminal)**: Header ရှိ `✨ Gemini CLI` ခလုတ်ကို နှိပ်ရုံဖြင့် Terminal ထဲတွင် သီးသန့် interactive REPL အဖြစ် မြန်မာစာအပြည့်အဝဖြင့် စကားပြောနိုင်ခြင်း (သို့မဟုတ် `npm run gemini` ဖြင့် စတင်နိုင်ခြင်း)။
+    - **Gemini AI Tab**: OpenCode မလိုဘဲ Google Gemini (2.5 Flash, 2.5 Pro, 2.0 Flash စသည်) နှင့် တိုက်ရိုက် Graphical Chat ပြုလုပ်နိုင်သော သီးသန့် Tab ပါဝင်ခြင်း။ Markdown rendering, Code syntax, Copy ခလုတ်များနှင့် Burmese Composer ပါဝင်ပါသည်။
+
 ---
 
 ## 🚀 စတင်အသုံးပြုပုံ (How to Launch)

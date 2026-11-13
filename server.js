@@ -35,7 +35,7 @@ const PORT = process.env.PORT || 3820;
 // its own expectation so a long-running (stale) server is detected instead of
 // failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
 // parses this same line to decide whether a running server needs a restart.
-const API_VERSION = 8;
+const API_VERSION = 12;
 
 let currentCwd = process.cwd();
 
@@ -51,6 +51,33 @@ function stopOpencodeWebProcess() {
     opencodeWebProcess = null;
     opencodeWebUrl = null;
   }
+}
+
+// Wait (best-effort) for the OpenCode background service to come back up after a
+// restart, so account switches take effect before we tell the UI they succeeded.
+// Resolves either when the service answers an HTTP request or after the timeout.
+function waitForServiceReady(timeoutMs) {
+  timeoutMs = timeoutMs || 12000;
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const attempt = () => {
+      const req = http.get('http://127.0.0.1:45278/', (res) => {
+        res.resume();
+        resolve();
+      });
+      req.on('error', () => {
+        if (Date.now() - started < timeoutMs) {
+          setTimeout(attempt, 500);
+        } else {
+          resolve();
+        }
+      });
+      req.setTimeout(1500, () => {
+        try { req.destroy(); } catch (e) {}
+      });
+    };
+    attempt();
+  });
 }
 
 app.use(express.json());
@@ -640,6 +667,149 @@ app.get('/api/models', async (req, res) => {
   });
 });
 
+// API: Token / usage summary for the installed OpenCode CLI.
+//
+// Aggregates the local usage statistics that OpenCode already keeps (sessions,
+// prompts, steps, tokens, cost, per-model breakdown) so the UI can show how many
+// tokens have been consumed. Remaining quota and reset times are provider-side
+// and are not exposed by the free-tier CLI, so they are reported as null here
+// unless a provider key is configured (see optional Go quota below).
+const USAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+let usageCache = { data: null, fetchedAt: 0 };
+
+function execUsageStats(force) {
+  return new Promise((resolve) => {
+    const isFresh = Date.now() - usageCache.fetchedAt < USAGE_CACHE_TTL_MS;
+    if (!force && isFresh && usageCache.data) return resolve(usageCache.data);
+
+    exec('opencode stats --all --json', { maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
+      if (err || !stdout) return resolve(null);
+      let parsed = null;
+      try { parsed = JSON.parse(stdout); } catch (e) { parsed = null; }
+      if (parsed) usageCache = { data: parsed, fetchedAt: Date.now() };
+      resolve(parsed);
+    });
+  });
+}
+
+async function fetchUsagePayload(forceRefresh) {
+  const force = !!forceRefresh;
+  const isFresh = Date.now() - usageCache.fetchedAt < USAGE_CACHE_TTL_MS;
+  let stats = usageCache.data;
+  if (force || !isFresh || !stats) {
+    const fresh = await execUsageStats(true);
+    if (fresh) stats = fresh;
+  }
+  if (!stats) return null;
+
+  const t = stats.tokens || {};
+  const cache = t.cache || {};
+  const input = Number(t.input) || 0;
+  const output = Number(t.output) || 0;
+  const reasoning = Number(t.reasoning) || 0;
+  const cacheRead = Number(cache.read) || 0;
+  const cacheWrite = Number(cache.write) || 0;
+  const totalTokens = input + output + reasoning + cacheRead + cacheWrite;
+
+  // Optional OpenCode Go quota: only available when a Zen/Go API key is configured.
+  let quota = null;
+  const apiKey = process.env.OPENCODE_API_KEY
+    || process.env.OPENCODE_ZEN_API_KEY
+    || process.env.OPENCODE_GO_API_KEY;
+  if (apiKey) {
+    try {
+      const https = require('https');
+      quota = await new Promise((resolve) => {
+        const req = https.get('https://opencode.ai/zen/go/v1/usage', {
+          headers: { Authorization: 'Bearer ' + apiKey, 'x-opencode-org-id': process.env.OPENCODE_ORG_ID || '' },
+          timeout: 8000
+        }, (resp) => {
+          let body = '';
+          resp.setEncoding('utf8');
+          resp.on('data', (c) => { if (body.length < 100000) body += c; });
+          resp.on('end', () => {
+            try {
+              const j = JSON.parse(body);
+              const u = j && j.usage ? j.usage : j;
+              resolve(u || null);
+            } catch (e) { resolve(null); }
+          });
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { try { req.destroy(); } catch (e) {} resolve(null); });
+      });
+    } catch (e) { quota = null; }
+  }
+
+  return {
+    success: true,
+    used: totalTokens,
+    usedTokens: totalTokens,
+    remaining: null,
+    remainingTokens: null,
+    resetAt: null,
+    reset: null,
+    limit: null,
+    tokens: {
+      input,
+      output,
+      reasoning,
+      cache: { read: cacheRead, write: cacheWrite },
+      total: totalTokens
+    },
+    cost: Number(stats.cost) || 0,
+    sessions: Number(stats.sessions) || 0,
+    subagents: Number(stats.subagents) || 0,
+    prompts: Number(stats.prompts) || 0,
+    steps: Number(stats.steps) || 0,
+    models: Array.isArray(stats.models) ? stats.models : [],
+    activeDays: Number(stats.activeDays) || 0,
+    streak: Number(stats.streak) || 0,
+    fetchedAt: usageCache.fetchedAt,
+    cached: !force && isFresh,
+    quota
+  };
+}
+
+app.get('/api/usage', async (req, res) => {
+  try {
+    const payload = await fetchUsagePayload(req.query.refresh === '1');
+    if (!payload) return res.status(500).json({ success: false, error: 'Usage data unavailable' });
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Aliases for compatibility with different client naming.
+app.get('/api/token-usage', async (req, res) => {
+  try {
+    const payload = await fetchUsagePayload(req.query.refresh === '1');
+    if (!payload) return res.status(500).json({ success: false, error: 'Usage data unavailable' });
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+app.get('/api/tokens', async (req, res) => {
+  try {
+    const payload = await fetchUsagePayload(req.query.refresh === '1');
+    if (!payload) return res.status(500).json({ success: false, error: 'Usage data unavailable' });
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+app.get('/api/quota', async (req, res) => {
+  try {
+    const payload = await fetchUsagePayload(req.query.refresh === '1');
+    if (!payload) return res.status(500).json({ success: false, error: 'Usage data unavailable' });
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // API: Direct AI Prompt Runner (Streams response)
 app.post('/api/opencode/run', (req, res) => {
   const { prompt, model } = req.body;
@@ -701,6 +871,131 @@ app.post('/api/opencode/run', (req, res) => {
   });
 });
 
+// API: Gemini Status and Available Models
+const GEMINI_MODELS = [
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'အလွန်မြန်ဆန်ပြီး စွမ်းဆောင်ရည်မြင့်မား (Recommended)' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', desc: 'နက်နဲသော အကြောင်းအရာများနှင့် ရှုပ်ထွေးသော coding အတွက် အကောင်းဆုံး' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', desc: 'ခေတ်မီ အမြန်ဆုံး မျိုးဆက်သစ် မော်ဒယ်' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', desc: 'Context ရှည်လျားစွာ နားလည်နိုင်သော မော်ဒယ်' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: 'ပေါ့ပါးမြန်ဆန်သော မော်ဒယ်' }
+];
+
+app.get('/api/gemini/status', (req, res) => {
+  const keys = readKeysFile(keysConfigFile);
+  const key = process.env.GEMINI_API_KEY || keys.GEMINI_API_KEY || '';
+  res.json({
+    configured: Boolean(key),
+    hint: key ? key.slice(-4) : '',
+    models: GEMINI_MODELS
+  });
+});
+
+// API: Direct Gemini AI Runner & Chat (Streams response)
+app.post('/api/gemini/run', async (req, res) => {
+  const { prompt, model = 'gemini-2.5-flash', history = [] } = req.body || {};
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).send('Prompt is required');
+  }
+
+  const keys = readKeysFile(keysConfigFile);
+  const apiKey = process.env.GEMINI_API_KEY || keys.GEMINI_API_KEY || '';
+  if (!apiKey) {
+    return res.status(400).send('⚠️ Gemini API Key မရှိသေးပါ။ ညာဘက်ထိပ်ရှိ ⚙️ ဖောင့်/အပြင်အဆင် > API Keys ထဲတွင် Gemini API Key ထည့်သွင်းပေးပါ။');
+  }
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+
+  const contents = [];
+  if (Array.isArray(history)) {
+    for (const h of history) {
+      if (h && h.role && h.text) {
+        contents.push({
+          role: h.role === 'user' ? 'user' : 'model',
+          parts: [{ text: String(h.text) }]
+        });
+      }
+    }
+  }
+  contents.push({
+    role: 'user',
+    parts: [{ text: prompt }]
+  });
+
+  const abortController = new AbortController();
+  req.on('close', () => {
+    abortController.abort();
+  });
+
+  const targetModel = /^[\w.-]+$/.test(model) ? model : 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(targetModel)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+
+  try {
+    const upstreamRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents,
+        generationConfig: {
+          temperature: 0.7
+        }
+      }),
+      signal: abortController.signal
+    });
+
+    if (!upstreamRes.ok) {
+      let errText = '';
+      try {
+        const errJson = await upstreamRes.json();
+        errText = errJson.error ? errJson.error.message : JSON.stringify(errJson);
+      } catch (e) {
+        errText = upstreamRes.statusText;
+      }
+      res.write(`\n[Gemini API Error: ${errText}]`);
+      return res.end();
+    }
+
+    const reader = upstreamRes.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const jsonStr = trimmed.slice(5).trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const candidates = parsed.candidates || [];
+          if (candidates.length && candidates[0].content && candidates[0].content.parts) {
+            for (const part of candidates[0].content.parts) {
+              if (part.text) {
+                res.write(part.text);
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    res.end();
+  } catch (err) {
+    if (!abortController.signal.aborted) {
+      res.write(`\n[Connection Error: ${err.message}]`);
+    }
+    res.end();
+  }
+});
+
 // API: List OpenCode accounts and credentials (sanitized, secrets stripped)
 app.get('/api/auth/accounts', (req, res) => {
   if (!cachedOpenCode.installed) {
@@ -750,8 +1045,46 @@ app.get('/api/auth/accounts', (req, res) => {
   });
 });
 
+function stripAnsi(str) {
+  return String(str || '').replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+}
+
+function runAuthSwitch(target, credentialId) {
+  return new Promise((resolve, reject) => {
+    // Try --standalone first to avoid background service plugin activation race conditions
+    exec(`opencode auth switch --standalone "${target}" "${credentialId}"`, (err1, stdout1, _stderr1) => {
+      if (!err1) return resolve({ stdout: stdout1 });
+      setTimeout(() => {
+        exec(`opencode auth switch --standalone "${target}" "${credentialId}"`, (err2, stdout2, stderr2) => {
+          if (!err2) return resolve({ stdout: stdout2 });
+          exec(`opencode auth switch "${target}" "${credentialId}"`, (err3, stdout3, stderr3) => {
+            if (!err3) return resolve({ stdout: stdout3 });
+            const msg = stripAnsi(stderr3 || stdout3 || stderr2 || stdout2 || err3.message).trim();
+            reject(new Error(msg));
+          });
+        });
+      }, 500);
+    });
+  });
+}
+
+function runAuthLogout(target, credentialId) {
+  return new Promise((resolve, reject) => {
+    exec(`opencode auth logout --standalone "${target}" "${credentialId}"`, (err1, stdout1, _stderr1) => {
+      if (!err1) return resolve({ stdout: stdout1 });
+      setTimeout(() => {
+        exec(`opencode auth logout "${target}" "${credentialId}"`, (err2, stdout2, stderr2) => {
+          if (!err2) return resolve({ stdout: stdout2 });
+          const msg = stripAnsi(stderr2 || stdout2 || err2.message).trim();
+          reject(new Error(msg));
+        });
+      }, 500);
+    });
+  });
+}
+
 // API: Switch active account for an integration
-app.post('/api/auth/switch', (req, res) => {
+app.post('/api/auth/switch', async (req, res) => {
   const { target, credentialId } = req.body || {};
   if (!target || !credentialId) {
     return res.status(400).json({ error: 'target and credentialId required' });
@@ -760,22 +1093,26 @@ app.post('/api/auth/switch', (req, res) => {
     return res.status(400).json({ error: 'Invalid identifier' });
   }
 
-  exec(`opencode auth switch "${target}" "${credentialId}"`, (err, stdout, stderr) => {
-    if (err) {
-      return res.status(500).json({ error: (stderr || stdout || err.message).trim() });
-    }
+  try {
+    await runAuthSwitch(target, credentialId);
     // Bust models catalogue cache so models matching the new account are refreshed
     modelsCache = { models: [], fetchedAt: 0 };
     // Terminate running web server process and restart OpenCode background service so new credentials take effect
     stopOpencodeWebProcess();
     exec('opencode service restart', () => {
-      return res.json({ success: true, message: 'Switched successfully' });
+      // Make sure the new account is actually live before responding, so the
+      // frontend does not reload the Web UI against a half-restarted service.
+      waitForServiceReady(15000).then(() => {
+        return res.json({ success: true, message: 'Switched successfully' });
+      });
     });
-  });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // API: Log out an account/credential
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', async (req, res) => {
   const { target, credentialId } = req.body || {};
   if (!target || !credentialId) {
     return res.status(400).json({ error: 'target and credentialId required' });
@@ -784,16 +1121,18 @@ app.post('/api/auth/logout', (req, res) => {
     return res.status(400).json({ error: 'Invalid identifier' });
   }
 
-  exec(`opencode auth logout "${target}" "${credentialId}"`, (err, stdout, stderr) => {
-    if (err) {
-      return res.status(500).json({ error: (stderr || stdout || err.message).trim() });
-    }
+  try {
+    await runAuthLogout(target, credentialId);
     modelsCache = { models: [], fetchedAt: 0 };
     stopOpencodeWebProcess();
     exec('opencode service restart', () => {
-      return res.json({ success: true, message: 'Logged out successfully' });
+      waitForServiceReady(15000).then(() => {
+        return res.json({ success: true, message: 'Logged out successfully' });
+      });
     });
-  });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // API: Launch external login script in a visible terminal window

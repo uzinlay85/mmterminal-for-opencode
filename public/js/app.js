@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Must match API_VERSION in server.js. If the running backend is older (e.g. the
   // server was left running from a previous version) the UI says so instead of
   // throwing cryptic parse errors.
-  const EXPECTED_API_VERSION = 8;
+  const EXPECTED_API_VERSION = 12;
 
   // Elements
   const terminalContainer = document.getElementById('terminal-container');
@@ -137,6 +137,15 @@ try {
   function themeFor(name) {
     return TERMINAL_THEMES[name] || TERMINAL_THEMES.dark;
   }
+
+  function formatNetworkError(err) {
+    if (!err) return 'အမှားဖြစ်ပေါ်ပါသည်';
+    const msg = err.message || String(err);
+    if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+      return 'Backend Server (localhost:3820) နှင့် ချိတ်ဆက်၍ မရပါ\n\nကျေးဇူးပြု၍ Start-Terminal.bat (သို့မဟုတ် npm start) ဖြင့် Server ကို စတင်ဖွင့်ပေးပါ။';
+    }
+    return msg;
+  }
   let parsedSettings = {};
   try {
     parsedSettings = JSON.parse(localStorage.getItem('mm_opencode_settings') || '{}');
@@ -233,6 +242,7 @@ try {
       isWsConnected = true;
       reconnectDelay = 2000;
       setConnectionStatus('#238636');
+      checkApiStatus();
 
       const cols = term.cols || 80;
       const rows = term.rows || 24;
@@ -265,6 +275,8 @@ try {
     ws.onclose = () => {
       isWsConnected = false;
       setConnectionStatus('#d29922');
+      const statusText = document.getElementById('status-text');
+      if (statusText) statusText.textContent = 'Server နှင့် ချိတ်ဆက်မှု ပြတ်တောက်သွားပါသည် (Start-Terminal.bat ကို ပြန်ဖွင့်ပါ)';
       // Exponential backoff so a dead server is not hammered on reconnect.
       setTimeout(connectWebSocket, reconnectDelay);
       reconnectDelay = Math.min(reconnectDelay * 1.5, 15000);
@@ -526,6 +538,24 @@ try {
     });
   }
 
+  function launchGeminiCliInTerm() {
+    const termTabBtn = document.querySelector('.tab-btn[data-tab="terminal"]');
+    if (termTabBtn) termTabBtn.click();
+    if (ws && isWsConnected) {
+      ws.send(JSON.stringify({ type: 'input', data: '\x03' }));
+      setTimeout(() => {
+        ws.send(JSON.stringify({ type: 'input', data: 'npm run gemini\r' }));
+      }, 120);
+      showToast('✨ Gemini CLI ကို စတင်နေပါသည်...');
+      if (term) term.focus();
+    }
+  }
+
+  const startGeminiCliBtn = document.getElementById('btn-start-gemini-cli');
+  if (startGeminiCliBtn) {
+    startGeminiCliBtn.addEventListener('click', launchGeminiCliInTerm);
+  }
+
   const ctrlCBtn = document.getElementById('btn-ctrl-c');
   if (ctrlCBtn) {
     ctrlCBtn.addEventListener('click', () => {
@@ -626,119 +656,33 @@ try {
       document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
     }
   });
-
-  // ---- In-app Folder Browser ----
-  const modalFolderBrowser = document.getElementById('modal-folder-browser');
-  const fbPathEl = document.getElementById('fb-path');
-  const fbListEl = document.getElementById('fb-list');
-  const fbCurrentEl = document.getElementById('fb-current');
-  const fbUpBtn = document.getElementById('btn-fb-up');
-  const fbThisPcBtn = document.getElementById('btn-fb-thispc');
-  const fbSelectBtn = document.getElementById('btn-fb-select');
-  let fbCurrentPath = null;
-  let fbParentPath = null;
-
   function browseWindowsFolder() {
-    closeModal(modalFolder);
-    openModal(modalFolderBrowser);
-    loadFolderBrowser(currentCwdSpan.textContent && currentCwdSpan.textContent !== 'Loading...'
+    const initial = currentCwdSpan.textContent && currentCwdSpan.textContent !== 'Loading...'
       ? currentCwdSpan.textContent
-      : null);
-  }
-
-  function loadFolderBrowser(targetPath) {
-    fbListEl.innerHTML = '<div style="color:var(--text-muted);padding:10px;text-align:center;">ဖိုင်တွဲများ ရှာဖွေနေပါသည်...</div>';
-    // 'THIS_PC' asks the server for the drive roots; a real path lists its sub-folders.
-    const query = '?path=' + encodeURIComponent(targetPath || 'THIS_PC');
-    fetch('/api/list-dirs' + query)
-      .then(r => {
-        const contentType = r.headers.get('content-type') || '';
-        // An old server answers /api/* with the HTML page (or a plain 404), which
-        // used to surface as "Unexpected token '<' ... is not valid JSON".
-        if (r.status === 404 || !contentType.includes('application/json')) {
-          throw new Error('SERVER_OUTDATED');
-        }
-        return r.json();
-      })
-      .then(data => {
-        if (data.error) {
-          fbListEl.innerHTML = `<div style="color:#ff7b72;padding:10px;">${escapeHtml(data.error)}</div>`;
-          return;
-        }
-        fbCurrentPath = data.path || null;
-        fbParentPath = data.parent || null;
-        fbPathEl.value = data.path || 'This PC';
-        fbCurrentEl.textContent = data.path ? ('ရွေးထားသည်: ' + data.path) : 'Drive တစ်ခု ရွေးပါ';
-        fbSelectBtn.disabled = !data.path;
-        fbSelectBtn.style.opacity = data.path ? '1' : '0.5';
-        renderFolderList(data.dirs || []);
-      })
-      .catch(err => {
-        if (err.message === 'SERVER_OUTDATED') {
-          fbListEl.innerHTML = '<div style="color:#f5b942;padding:10px;line-height:1.8;">'
-            + '⚠️ Server သည် ဗားရှင်းဟောင်း ဖြစ်နေပါသည်။<br>'
-            + 'App ကို ပိတ်ပြီး <b>Start-Terminal.bat</b> (သို့မဟုတ် Desktop icon) ကို ပြန်ဖွင့်ပါ။<br>'
-            + '<button id="btn-fb-restart-hint" class="action-btn" style="margin-top:8px;">🔄 ပြန်လည် ရယူမည်</button></div>';
-          const retryBtn = document.getElementById('btn-fb-restart-hint');
-          if (retryBtn) retryBtn.onclick = () => loadFolderBrowser(targetPath);
-          return;
-        }
-        fbListEl.innerHTML = `<div style="color:#ff7b72;padding:10px;">Error: ${escapeHtml(err.message)}</div>`;
-      });
-  }
-
-  function renderFolderList(dirs) {
-    fbListEl.innerHTML = '';
-    if (!dirs.length) {
-      fbListEl.innerHTML = '<div style="color:var(--text-muted);padding:10px;text-align:center;">ဖိုင်တွဲ မရှိပါ</div>';
-      return;
-    }
-    dirs.forEach(dir => {
-      const row = document.createElement('div');
-      row.className = 'history-item';
-      row.style.cursor = 'pointer';
-      row.style.display = 'flex';
-      row.style.alignItems = 'center';
-      row.style.gap = '8px';
-      row.innerHTML = `<span>📁</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(dir.name)}</span>`;
-      row.onclick = () => loadFolderBrowser(dir.path);
-      fbListEl.appendChild(row);
-    });
-  }
-
-  function applyFolderChange(newPath) {
-    fetch('/api/cwd', {
+      : (folderInputPath && folderInputPath.value ? folderInputPath.value : null);
+    fetch('/api/browse-folder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cwd: newPath })
+      body: JSON.stringify({ initialPath: initial })
     })
       .then(r => r.json())
       .then(data => {
-        if (data.success) {
+        if (data.success && data.cwd) {
           currentCwdSpan.textContent = data.cwd;
-          folderInputPath.value = data.cwd;
+          if (folderInputPath) folderInputPath.value = data.cwd;
           addRecentProject(data.cwd);
-          closeModal(modalFolderBrowser);
           closeModal(modalFolder);
           showToast(`📁 Project Folder ကို "${data.cwd}" သို့ ပြောင်းလဲပြီးပါပြီ`);
           if (ws && isWsConnected) {
             ws.send(JSON.stringify({ type: 'restart', shell: shellSelect.value, cwd: data.cwd }));
           }
-        } else {
-          alert('Folder ပြောင်းလဲမှု မအောင်မြင်ပါ: ' + (data.error || 'လမ်းကြောင်း မှားယွင်းနေပါသည်'));
+        } else if (data.error) {
+          alert(data.error);
         }
       })
-      .catch(err => alert('Error: ' + err.message));
+      .catch(err => alert(formatNetworkError(err)));
   }
 
-  if (fbUpBtn) fbUpBtn.addEventListener('click', () => {
-    if (fbParentPath) loadFolderBrowser(fbParentPath);
-    else loadFolderBrowser(null);
-  });
-  if (fbThisPcBtn) fbThisPcBtn.addEventListener('click', () => loadFolderBrowser(null));
-  if (fbSelectBtn) fbSelectBtn.addEventListener('click', () => {
-    if (fbCurrentPath) applyFolderChange(fbCurrentPath);
-  });
 
   if (browseFolderBtn) {
     browseFolderBtn.addEventListener('click', browseWindowsFolder);
@@ -781,7 +725,7 @@ try {
       }
     })
     .catch(err => {
-      alert('Error: ' + err.message);
+      alert(formatNetworkError(err));
     });
   });
 
@@ -1118,15 +1062,25 @@ try {
           showToast(`✅ OpenCode Account ကို "${label}" သို့ ပြောင်းလိုက်ပါပြီ (Web UI တွင် '+' New Chat နှိပ်ပါ)`);
           loadAccounts();
           loadModelsFromCli(true);
-          if (webServerUrl) {
-            checkWebUiStatus();
+          // Drop any in-memory Web UI state tied to the previous account and
+          // reconnect to the freshly restarted service with a new pairing link,
+          // so the new account is used instead of the previous one's session.
+          if (webuiIframe) {
+            webuiIframe.src = 'about:blank';
           }
+          webServerUrl = null;
+          // Refresh pairing link for the new account and reload the Web UI against
+          // the restarted service so no previous-account state carries over.
+          setTimeout(() => {
+            fetchPairingLink();
+            setTimeout(() => { checkWebUiStatus(); }, 1500);
+          }, 500);
         } else {
           alert('Account ပြောင်းလဲမှု မအောင်မြင်ပါ: ' + (data.error || 'အမှားဖြစ်ပေါ်ပါသည်'));
         }
       })
       .catch(err => {
-        alert('Network error: ' + err.message);
+        alert(formatNetworkError(err));
       });
   }
 
@@ -1143,15 +1097,20 @@ try {
           showToast(`🗑️ "${label}" အား Logout ပြုလုပ်ပြီးပါပြီ`);
           loadAccounts();
           loadModelsFromCli(true);
-          if (webServerUrl) {
-            checkWebUiStatus();
+          if (webuiIframe) {
+            webuiIframe.src = 'about:blank';
           }
+          webServerUrl = null;
+          setTimeout(() => {
+            fetchPairingLink();
+            setTimeout(() => { checkWebUiStatus(); }, 1500);
+          }, 500);
         } else {
           alert('Logout မအောင်မြင်ပါ: ' + (data.error || 'အမှားဖြစ်ပေါ်ပါသည်'));
         }
       })
       .catch(err => {
-        alert('Network error: ' + err.message);
+        alert(formatNetworkError(err));
       });
   }
 
@@ -1165,7 +1124,7 @@ try {
           alert('Login Window ဖွင့်၍ မရပါ: ' + (res.error || ''));
         }
       })
-      .catch(err => alert('Error: ' + err.message));
+      .catch(err => alert(formatNetworkError(err)));
   }
 
   function startInteractiveLogin() {
@@ -1223,6 +1182,87 @@ try {
     btnRefreshAccounts.addEventListener('click', () => loadAccounts(true));
   }
 
+  // ---- Token Usage ----
+  const btnOpenUsage = document.getElementById('btn-open-usage');
+  const btnUsageRefresh = document.getElementById('btn-usage-refresh');
+  const modalUsage = document.getElementById('modal-usage');
+
+  function formatNumber(n) {
+    return (Number(n) || 0).toLocaleString();
+  }
+
+  function loadUsage(forceRefresh) {
+    const summary = document.getElementById('usage-summary');
+    if (summary) summary.textContent = 'ရယူနေပါသည်...';
+    fetch('/api/usage' + (forceRefresh ? '?refresh=1' : ''))
+      .then(r => r.json())
+      .then(res => {
+        if (!res || !res.success) {
+          if (summary) summary.textContent = 'Usage data ရယူမှု မအောင်မြင်ပါ';
+          return;
+        }
+        const totalEl = document.getElementById('usage-total');
+        const costEl = document.getElementById('usage-cost');
+        const inputEl = document.getElementById('usage-input');
+        const outputEl = document.getElementById('usage-output');
+        const reasoningEl = document.getElementById('usage-reasoning');
+        const cacheEl = document.getElementById('usage-cache');
+        const sessionsEl = document.getElementById('usage-sessions');
+        const promptsEl = document.getElementById('usage-prompts');
+        const stepsEl = document.getElementById('usage-steps');
+        const modelsEl = document.getElementById('usage-models');
+        if (totalEl) totalEl.textContent = formatNumber(res.usedTokens || res.used);
+        if (costEl) costEl.textContent = '$' + (Number(res.cost) || 0).toFixed(4);
+        const t = res.tokens || {};
+        if (inputEl) inputEl.textContent = formatNumber(t.input);
+        if (outputEl) outputEl.textContent = formatNumber(t.output);
+        if (reasoningEl) reasoningEl.textContent = formatNumber(t.reasoning);
+        if (cacheEl) cacheEl.textContent = formatNumber((t.cache && t.cache.read) || 0);
+        if (sessionsEl) sessionsEl.textContent = formatNumber(res.sessions);
+        if (promptsEl) promptsEl.textContent = formatNumber(res.prompts);
+        if (stepsEl) stepsEl.textContent = formatNumber(res.steps);
+        if (modelsEl) {
+          modelsEl.innerHTML = '';
+          const models = res.models || [];
+          if (!models.length) {
+            modelsEl.innerHTML = '<div style="color:var(--text-muted);">Model အချက်အလက် မရှိပါ</div>';
+          } else {
+            const title = document.createElement('div');
+            title.style.cssText = 'font-weight:600;color:#fff;margin-bottom:4px;';
+            title.textContent = 'Model အလိုက် အသုံးပြုမှု:';
+            modelsEl.appendChild(title);
+            models.slice(0, 8).forEach(m => {
+              const row = document.createElement('div');
+              row.style.cssText = 'display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-bottom:1px solid var(--border-color);';
+              const name = (m.model && m.model.id) || m.name || 'model';
+              const toks = (m.tokens && m.tokens.total) ? m.tokens.total : ((m.tokens && ((m.tokens.input||0)+(m.tokens.output||0)+(m.tokens.reasoning||0)+(m.tokens.cache&&m.tokens.cache.read||0))) || 0);
+              row.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(name))}</span><span style="font-family:var(--font-mono);">${formatNumber(toks)}</span>`;
+              modelsEl.appendChild(row);
+            });
+          }
+        }
+        if (summary) {
+          const when = res.fetchedAt ? new Date(res.fetchedAt).toLocaleTimeString() : '';
+          summary.textContent = 'စစ်ဆေးချိန်: ' + (when || '—') + (res.cached ? ' (cache)' : '');
+        }
+      })
+      .catch(() => {
+        if (summary) summary.textContent = 'Usage data ရယူမှု မအောင်မြင်ပါ';
+      });
+  }
+
+  if (btnOpenUsage) {
+    btnOpenUsage.addEventListener('click', () => {
+      loadUsage(false);
+      if (modalUsage) {
+        modalUsage.classList.add('active');
+      }
+    });
+  }
+  if (btnUsageRefresh) {
+    btnUsageRefresh.addEventListener('click', () => loadUsage(true));
+  }
+
   // Tab Switching
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1249,6 +1289,9 @@ try {
         // tab is opened — a newly released free model then shows up without a reload.
         loadModelsFromCli(false);
         runnerPromptInput.focus();
+      } else if (targetTab === 'gemini') {
+        checkGeminiStatus();
+        if (geminiPromptInput) geminiPromptInput.focus();
       }
     });
   });
@@ -1257,18 +1300,21 @@ try {
   const btnCopyPairLink = document.getElementById('btn-copy-pair-link');
 
   function fetchPairingLink() {
-    if (!inputPairLink) return;
-    fetch('/api/opencode/web/pair')
+    if (!inputPairLink) return Promise.resolve(null);
+    return fetch('/api/opencode/web/pair')
       .then(r => r.json())
       .then(res => {
         if (res.success && res.link) {
           inputPairLink.value = res.link;
+          return res.link;
         } else {
           inputPairLink.value = 'Pairing link ရယူမရပါ';
+          return null;
         }
       })
       .catch(() => {
-        inputPairLink.value = 'Pairing link ရယူမရပါ';
+        if (inputPairLink) inputPairLink.value = 'Pairing link ရယူမရပါ';
+        return null;
       });
   }
 
@@ -1335,7 +1381,7 @@ try {
           alert('Web Server စတင်ခြင်း မအောင်မြင်ပါ: ' + (res.error || 'Server error'));
         }
       })
-      .catch(err => alert('Error: ' + err.message));
+      .catch(err => alert(formatNetworkError(err)));
   }
 
   function stopWebServer() {
@@ -1392,6 +1438,10 @@ try {
     let prompt = runnerPromptInput.value.trim();
     if (!prompt) return;
 
+    // Capture usage before the run so we can report the delta afterwards.
+    let usageBefore = null;
+    fetch('/api/usage').then(r => r.json()).then(d => { usageBefore = d; }).catch(() => {});
+
     if (window.MyanmarConverter && window.MyanmarConverter.isZawgyi(prompt)) {
       prompt = window.MyanmarConverter.zawgyiToUnicode(prompt);
       runnerPromptInput.value = prompt;
@@ -1433,7 +1483,19 @@ try {
             clearTimeout(safetyTimer);
             btnRunAiPrompt.disabled = false;
             btnRunAiPrompt.style.opacity = '1';
-            showToast('✅ OpenCode မှ ဖြေကြားပြီးပါပြီ');
+            // Report token delta for this run.
+            fetch('/api/usage?refresh=1').then(r => r.json()).then(after => {
+              if (usageBefore && after && after.success) {
+                const delta = (Number(after.usedTokens || after.used) || 0) - (Number(usageBefore.usedTokens || usageBefore.used) || 0);
+                if (delta > 0) {
+                  showToast('✅ ဖြေကြားပြီးပါပြီ · ဤတစ်ကြိမ် Token ' + delta.toLocaleString() + ' ခု သုံးပါသည်');
+                } else {
+                  showToast('✅ OpenCode မှ ဖြေကြားပြီးပါပြီ');
+                }
+              } else {
+                showToast('✅ OpenCode မှ ဖြေကြားပြီးပါပြီ');
+              }
+            }).catch(() => showToast('✅ OpenCode မှ ဖြေကြားပြီးပါပြီ'));
             return;
           }
           const chunk = decoder.decode(value, { stream: true });
@@ -1458,29 +1520,32 @@ try {
     });
   }
 
-  // Load Status on startup
-  fetch('/api/status')
-    .then(r => r.json())
-    .then(data => {
-      if (data.apiVersion !== EXPECTED_API_VERSION) {
-        // A server left running from an older version does not know the new API
-        // routes; tell the user instead of letting calls fail with parse errors.
-        showToast('⚠️ Server ဗားရှင်းဟောင်း ဖြစ်နေပါသည်။ App ကို ပိတ်ပြီး ပြန်ဖွင့်ပါ');
-      }
-      if (data.opencodeInstalled) {
-        document.getElementById('status-text').textContent = `OpenCode v${data.version || '1.4'} အသင့်ရှိပါသည်`;
-      } else {
-        document.getElementById('status-text').textContent = 'OpenCode မရှိသေးပါ';
-        // The header dot tracks the WebSocket connection (see setConnectionStatus),
-        // so a missing CLI is reported through the text only.
-      }
-      if (data.cwd) {
-        currentCwdSpan.textContent = data.cwd;
-        folderInputPath.value = data.cwd;
-        addRecentProject(data.cwd);
-      }
-    })
-    .catch(() => {});
+  // Load Status on startup and reconnection
+  function checkApiStatus() {
+    fetch('/api/status')
+      .then(r => r.json())
+      .then(data => {
+        if (data.apiVersion !== EXPECTED_API_VERSION) {
+          // A server left running from an older version does not know the new API
+          // routes; tell the user instead of letting calls fail with parse errors.
+          showToast('⚠️ Server ဗားရှင်းဟောင်း ဖြစ်နေပါသည်။ App ကို ပိတ်ပြီး ပြန်ဖွင့်ပါ');
+        }
+        if (data.opencodeInstalled) {
+          document.getElementById('status-text').textContent = `OpenCode v${data.version || '1.4'} အသင့်ရှိပါသည်`;
+        } else {
+          document.getElementById('status-text').textContent = 'OpenCode မရှိသေးပါ';
+          // The header dot tracks the WebSocket connection (see setConnectionStatus),
+          // so a missing CLI is reported through the text only.
+        }
+        if (data.cwd) {
+          currentCwdSpan.textContent = data.cwd;
+          folderInputPath.value = data.cwd;
+          addRecentProject(data.cwd);
+        }
+      })
+      .catch(() => {});
+  }
+  checkApiStatus();
 
   // Populate the runner model picker from the installed OpenCode CLI. Falls back
   // to the static <option> list when the CLI is unavailable or returns nothing.
@@ -1570,6 +1635,295 @@ try {
   // model is already there when the user looks for it.
   setInterval(() => loadModelsFromCli(true), MODELS_AUTO_REFRESH_MS);
 
+  // ============================================================
+  // Tab 4: Gemini AI Interactive Chat & Composer Engine
+  // ============================================================
+  const geminiModelSelect = document.getElementById('gemini-model-select');
+  const geminiKeyStatus = document.getElementById('gemini-key-status');
+  const btnGeminiOpenSettings = document.getElementById('btn-gemini-open-settings');
+  const btnGeminiLaunchCli = document.getElementById('btn-gemini-launch-cli');
+  const btnGeminiClear = document.getElementById('btn-gemini-clear');
+  const geminiChatContainer = document.getElementById('gemini-chat-container');
+  const geminiPromptTemplates = document.getElementById('gemini-prompt-templates');
+  const geminiPromptInput = document.getElementById('gemini-prompt-input');
+  const geminiCharCounter = document.getElementById('gemini-char-counter');
+  const geminiZawgyiBadge = document.getElementById('gemini-zawgyi-badge');
+  const btnGeminiClearPrompt = document.getElementById('btn-gemini-clear-prompt');
+  const btnGeminiStop = document.getElementById('btn-gemini-stop');
+  const btnGeminiSend = document.getElementById('btn-gemini-send');
+
+  let geminiConversationHistory = [];
+  let geminiCurrentAbortController = null;
+
+  window.__showGeminiCopyToast = () => showToast('📋 Code ကို Copy ကူးပြီးပါပြီ');
+
+  function checkGeminiStatus() {
+    fetch('/api/gemini/status')
+      .then(r => r.json())
+      .then(data => {
+        if (!geminiKeyStatus) return;
+        if (data && data.configured) {
+          geminiKeyStatus.innerHTML = `<span style="color: #3fb950; font-weight: 600;">🔑 Key ချိတ်ဆက်ပြီး (••••${data.hint || ''})</span>`;
+          geminiKeyStatus.style.borderColor = 'rgba(63, 185, 80, 0.4)';
+        } else {
+          geminiKeyStatus.innerHTML = `<span style="color: #e3b341; font-weight: 600;">⚠️ Key မရှိသေးပါ</span>`;
+          geminiKeyStatus.style.borderColor = 'rgba(227, 179, 65, 0.4)';
+        }
+      })
+      .catch(() => {});
+  }
+
+  function updateGeminiCharCount() {
+    if (!geminiPromptInput) return;
+    const val = geminiPromptInput.value;
+    if (geminiCharCounter) {
+      geminiCharCounter.textContent = `${val.length} စာလုံး`;
+    }
+    if (geminiZawgyiBadge && window.MyanmarConverter) {
+      if (val.trim() && window.MyanmarConverter.isZawgyi(val)) {
+        geminiZawgyiBadge.style.display = 'inline-block';
+      } else {
+        geminiZawgyiBadge.style.display = 'none';
+      }
+    }
+  }
+
+  document.querySelectorAll('.gemini-char-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const char = btn.getAttribute('data-char');
+      insertAtCursor(geminiPromptInput, char);
+      updateGeminiCharCount();
+      geminiPromptInput.focus();
+    });
+  });
+
+  if (geminiZawgyiBadge) {
+    geminiZawgyiBadge.addEventListener('click', () => {
+      if (window.MyanmarConverter && geminiPromptInput.value) {
+        geminiPromptInput.value = window.MyanmarConverter.zawgyiToUnicode(geminiPromptInput.value);
+        updateGeminiCharCount();
+        showToast('✅ Zawgyi မှ Unicode သို့ ပြောင်းလဲပြီးပါပြီ');
+        geminiPromptInput.focus();
+      }
+    });
+  }
+
+  if (geminiPromptTemplates) {
+    geminiPromptTemplates.addEventListener('change', () => {
+      const val = geminiPromptTemplates.value;
+      if (val) {
+        geminiPromptInput.value = val;
+        updateGeminiCharCount();
+        geminiPromptInput.focus();
+      }
+    });
+  }
+
+  if (geminiPromptInput) {
+    geminiPromptInput.addEventListener('input', updateGeminiCharCount);
+    geminiPromptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendGeminiMessage();
+      }
+    });
+  }
+
+  if (btnGeminiClearPrompt) {
+    btnGeminiClearPrompt.addEventListener('click', () => {
+      geminiPromptInput.value = '';
+      updateGeminiCharCount();
+      geminiPromptInput.focus();
+    });
+  }
+
+  if (btnGeminiOpenSettings) {
+    btnGeminiOpenSettings.addEventListener('click', () => {
+      openSettingsBtn.click();
+      setTimeout(() => {
+        const geminiInput = document.getElementById('setting-gemini-key');
+        if (geminiInput) geminiInput.focus();
+      }, 200);
+    });
+  }
+
+  if (btnGeminiLaunchCli) {
+    btnGeminiLaunchCli.addEventListener('click', launchGeminiCliInTerm);
+  }
+
+  if (btnGeminiClear) {
+    btnGeminiClear.addEventListener('click', () => {
+      geminiConversationHistory = [];
+      geminiChatContainer.innerHTML = `
+        <div class="gemini-msg gemini-msg-assistant notranslate">
+          <div class="gemini-msg-header">
+            <span class="gemini-avatar">✨</span>
+            <span class="gemini-name">Gemini AI</span>
+            <span class="gemini-model-badge">Google Generative AI</span>
+          </div>
+          <div class="gemini-msg-body">
+            စကားဝိုင်းကို ရှင်းလင်းလိုက်ပါပြီ။ မေးမြန်းလိုသည်များကို အသစ်ပြန်လည် စတင်နိုင်ပါပြီခင်ဗျာ။
+          </div>
+        </div>
+      `;
+      showToast('🧹 Gemini စကားဝိုင်းကို ရှင်းလင်းလိုက်ပါပြီ');
+    });
+  }
+
+  function formatGeminiText(raw) {
+    if (!raw) return '';
+    const codeBlocks = [];
+    let text = raw.replace(/```([\w-]*)\r?\n([\s\S]*?)```/g, (_m, lang, code) => {
+      const idx = codeBlocks.length;
+      const escapedCode = escapeHtml(code.trim());
+      const encodedCode = encodeURIComponent(code);
+      codeBlocks.push(`
+        <div style="position: relative; margin: 10px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 4px 10px; border-top-left-radius: 6px; border-top-right-radius: 6px; border: 1px solid var(--border-color); border-bottom: none; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">
+            <span>${lang || 'code'}</span>
+            <button class="tool-chip notranslate" style="padding: 1px 6px; font-size: 10px;" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodedCode}')); window.__showGeminiCopyToast && window.__showGeminiCopyToast();">📋 Copy</button>
+          </div>
+          <pre style="margin: 0; border-top-left-radius: 0; border-top-right-radius: 0;"><code>${escapedCode}</code></pre>
+        </div>
+      `);
+      return `@@CODE_BLOCK_${idx}@@`;
+    });
+
+    text = escapeHtml(text);
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/`([^`]+)`/g, '<code style="background: rgba(148,163,184,0.15); padding: 2px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: 12.5px;">$1</code>');
+    text = text.replace(/@@CODE_BLOCK_(\d+)@@/g, (_m, idx) => codeBlocks[Number(idx)] || '');
+
+    return text;
+  }
+
+  function sendGeminiMessage() {
+    let prompt = geminiPromptInput.value.trim();
+    if (!prompt) return;
+
+    if (window.MyanmarConverter && window.MyanmarConverter.isZawgyi(prompt)) {
+      prompt = window.MyanmarConverter.zawgyiToUnicode(prompt);
+    }
+
+    geminiPromptInput.value = '';
+    updateGeminiCharCount();
+
+    // Append User Message to UI
+    const userMsgEl = document.createElement('div');
+    userMsgEl.className = 'gemini-msg gemini-msg-user notranslate';
+    userMsgEl.innerHTML = `
+      <div class="gemini-msg-header">
+        <span class="gemini-avatar">👤</span>
+        <span class="gemini-name">သင်</span>
+      </div>
+      <div class="gemini-msg-body">${escapeHtml(prompt)}</div>
+    `;
+    geminiChatContainer.appendChild(userMsgEl);
+
+    // Append Assistant Message placeholder to UI
+    const model = geminiModelSelect ? geminiModelSelect.value : 'gemini-2.5-flash';
+    const assistantMsgEl = document.createElement('div');
+    assistantMsgEl.className = 'gemini-msg gemini-msg-assistant notranslate';
+    assistantMsgEl.innerHTML = `
+      <div class="gemini-msg-header">
+        <span class="gemini-avatar">✨</span>
+        <span class="gemini-name">Gemini AI</span>
+        <span class="gemini-model-badge">${model}</span>
+      </div>
+      <div class="gemini-msg-body"><span style="color: var(--accent-blue);">စဉ်းစားတွေးခေါ်နေပါသည်...</span></div>
+    `;
+    geminiChatContainer.appendChild(assistantMsgEl);
+    geminiChatContainer.scrollTop = geminiChatContainer.scrollHeight;
+
+    const bodyEl = assistantMsgEl.querySelector('.gemini-msg-body');
+
+    btnGeminiSend.disabled = true;
+    btnGeminiSend.style.opacity = '0.6';
+    if (btnGeminiStop) btnGeminiStop.style.display = 'inline-flex';
+
+    let fullAnswer = '';
+    const abortController = new AbortController();
+    geminiCurrentAbortController = abortController;
+
+    fetch('/api/gemini/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        model,
+        history: geminiConversationHistory
+      }),
+      signal: abortController.signal
+    })
+    .then(response => {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      bodyEl.textContent = '';
+
+      function readChunk() {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            btnGeminiSend.disabled = false;
+            btnGeminiSend.style.opacity = '1';
+            if (btnGeminiStop) btnGeminiStop.style.display = 'none';
+            geminiCurrentAbortController = null;
+
+            if (fullAnswer) {
+              bodyEl.innerHTML = formatGeminiText(fullAnswer);
+              geminiConversationHistory.push({ role: 'user', text: prompt });
+              geminiConversationHistory.push({ role: 'model', text: fullAnswer });
+              showToast('✅ Gemini မှ ဖြေကြားပြီးပါပြီ');
+            }
+            return;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          fullAnswer += chunk;
+          bodyEl.textContent = fullAnswer;
+          geminiChatContainer.scrollTop = geminiChatContainer.scrollHeight;
+          readChunk();
+        }).catch(err => {
+          btnGeminiSend.disabled = false;
+          btnGeminiSend.style.opacity = '1';
+          if (btnGeminiStop) btnGeminiStop.style.display = 'none';
+          geminiCurrentAbortController = null;
+          if (abortController.signal.aborted) {
+            bodyEl.innerHTML += '<br><em style="color: #e3b341;">[အသုံးပြုသူမှ ရပ်တန့်လိုက်ပါသည်]</em>';
+          } else {
+            bodyEl.innerHTML += `<br><span style="color: #ff7b72;">[Error: ${err.message}]</span>`;
+          }
+        });
+      }
+
+      readChunk();
+    })
+    .catch(err => {
+      btnGeminiSend.disabled = false;
+      btnGeminiSend.style.opacity = '1';
+      if (btnGeminiStop) btnGeminiStop.style.display = 'none';
+      geminiCurrentAbortController = null;
+      if (abortController.signal.aborted) {
+        bodyEl.innerHTML = '<em style="color: #e3b341;">[အသုံးပြုသူမှ ရပ်တန့်လိုက်ပါသည်]</em>';
+      } else {
+        bodyEl.innerHTML = `<span style="color: #ff7b72;">Error: ${err.message}</span>`;
+      }
+    });
+  }
+
+  if (btnGeminiStop) {
+    btnGeminiStop.addEventListener('click', () => {
+      if (geminiCurrentAbortController) {
+        geminiCurrentAbortController.abort();
+        geminiCurrentAbortController = null;
+        showToast('⏹️ Gemini ဖြေကြားမှုကို ရပ်တန့်လိုက်ပါပြီ');
+      }
+    });
+  }
+
+  if (btnGeminiSend) {
+    btnGeminiSend.addEventListener('click', sendGeminiMessage);
+  }
+
   // Startup
   initTerminal();
   connectWebSocket();
@@ -1578,4 +1932,6 @@ try {
   renderRecentProjects();
   loadModelsFromCli();
   loadAccounts();
+  loadUsage(false);
+  checkGeminiStatus();
 });

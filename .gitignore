@@ -17,3 +17,4 @@ api_keys.json
 # OS generated files
 Thumbs.db
 .DS_Store
+tmp_*.png

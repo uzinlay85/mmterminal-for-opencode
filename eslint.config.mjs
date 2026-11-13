@@ -5,13 +5,15 @@ const nodeGlobals = {
   process: 'readonly', __dirname: 'readonly', __filename: 'readonly',
   console: 'readonly', Buffer: 'readonly', URL: 'readonly',
   setTimeout: 'readonly', clearTimeout: 'readonly',
-  setInterval: 'readonly', clearInterval: 'readonly'
+  setInterval: 'readonly', clearInterval: 'readonly',
+  fetch: 'readonly', AbortController: 'readonly', TextDecoder: 'readonly'
 };
 
 const browserGlobals = {
   window: 'readonly', document: 'readonly', localStorage: 'readonly',
   navigator: 'readonly', fetch: 'readonly', WebSocket: 'readonly',
   Terminal: 'readonly', FitAddon: 'readonly', TextDecoder: 'readonly',
+  AbortController: 'readonly',
   confirm: 'readonly', alert: 'readonly', self: 'readonly', define: 'readonly',
   module: 'readonly',
   setTimeout: 'readonly', clearTimeout: 'readonly',
@@ -37,7 +39,7 @@ export default [
     ]
   },
   {
-    files: ['server.js', 'test/**/*.js'],
+    files: ['server.js', 'scripts/**/*.js', 'test/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',

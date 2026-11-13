@@ -36,6 +36,9 @@
         <button class="tab-btn notranslate" data-tab="runner">
           <span>⚡ AI Prompt စနစ်</span>
         </button>
+        <button class="tab-btn notranslate" data-tab="gemini">
+          <span>✨ Gemini AI</span>
+        </button>
       </nav>
     </div>
 
@@ -58,8 +61,14 @@
       <button id="btn-open-account" class="action-btn notranslate" title="OpenCode Account စီမံမည် / ပြောင်းမည်">
         <span id="header-account-label">👤 Account</span>
       </button>
+      <button id="btn-open-usage" class="action-btn notranslate" title="Token အသုံးပြုမှု စစ်ဆေးမည်">
+        <span>📊 Token Usage</span>
+      </button>
       <button id="btn-start-opencode" class="action-btn btn-primary notranslate" title="OpenCode Standard TUI စတင်မည်">
         <span>🚀 OpenCode စတင်မည်</span>
+      </button>
+      <button id="btn-start-gemini-cli" class="action-btn notranslate" style="color: #60a5fa; border-color: rgba(96, 165, 250, 0.4);" title="Terminal ထဲတွင် Gemini CLI စတင်မည်">
+        <span>✨ Gemini CLI</span>
       </button>
       <button id="btn-start-opencode-mini" class="action-btn btn-blue notranslate" title="ကော်လံမထပ်ဘဲ စာဖတ်ရ အရှင်းဆုံး မုဒ် (opencode mini)">
         <span>💬 စာဖတ်မုဒ် (OpenCode Mini)</span>
@@ -266,30 +275,97 @@
       </div>
     </section>
 
+    <!-- Tab 4: Dedicated Gemini AI Interface -->
+    <section id="pane-gemini" class="tab-pane notranslate">
+      <div class="gemini-container notranslate">
+        <!-- Gemini Top Control Bar -->
+        <div class="gemini-top-bar notranslate">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="font-weight: 600; font-size: 13px; color: #fff;">✨ Model:</span>
+            <select id="gemini-model-select" class="setting-input notranslate" style="width: auto; min-width: 220px; font-size: 12px; padding: 4px 10px;">
+              <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (⚡ မြန်ဆန်/Recommended)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (🧠 အနက်ရှိုင်းဆုံး စဉ်းစားနိုင်)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash (⚡ မျိုးဆက်သစ် အမြန်)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (📚 Context ရှည်လျားစွာ နားလည်)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (ပေါ့ပါးမြန်ဆန်)</option>
+            </select>
+            <div id="gemini-key-status" class="tool-chip notranslate" style="font-size: 11px;">
+              <span>🔑 စစ်ဆေးနေပါသည်...</span>
+            </div>
+            <button id="btn-gemini-open-settings" class="tool-chip notranslate" style="color: #58a6ff; font-weight: 500;" title="Gemini API Key ထည့်သွင်း/ပြင်ဆင်ရန် Settings ဖွင့်မည်">⚙️ Key ပြင်မည်</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="btn-gemini-launch-cli" class="action-btn notranslate" style="color: #58a6ff; font-size: 12px; padding: 4px 10px;" title="Terminal Tab တွင် Gemini CLI ဖြင့် အသုံးပြုမည်">
+              <span>🖥️ Terminal CLI ဖွင့်မည်</span>
+            </button>
+            <button id="btn-gemini-clear" class="action-btn notranslate" style="font-size: 12px; padding: 4px 10px;" title="စကားဝိုင်း အားလုံး ရှင်းလင်းမည်">
+              <span>🧹 စကားဝိုင်းရှင်းမည်</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Gemini Chat Message Stream -->
+        <div id="gemini-chat-container" class="gemini-chat-area notranslate">
+          <!-- Initial Welcome Message -->
+          <div class="gemini-msg gemini-msg-assistant notranslate">
+            <div class="gemini-msg-header">
+              <span class="gemini-avatar">✨</span>
+              <span class="gemini-name">Gemini AI</span>
+              <span class="gemini-model-badge">Google Generative AI</span>
+            </div>
+            <div class="gemini-msg-body">
+              မင်္ဂလာပါခင်ဗျာ! Google Gemini AI စနစ်မှ ကြိုဆိုပါတယ်။ မြန်မာဘာသာဖြင့် မေးခွန်းများ မေးမြန်းခြင်း၊ Code ရေးသားခြင်း၊ စာသားဘာသာပြန်ခြင်းနှင့် စနစ်ပြဿနာ ဖြေရှင်းခြင်းများကို ကူညီဆောင်ရွက်ပေးနိုင်ပါသည်။
+              <br><br>
+              💡 <em>အကြံပြုချက်- အောက်ပါအကွက်တွင် မြန်မာလို အလွယ်တကူ ရိုက်ထည့်ပြီး မေးမြန်းနိုင်ပါသည် (Zawgyi ဖြင့် ရိုက်ထည့်ပါကလည်း Unicode သို့ အလိုအလျောက် ပြောင်းပေးပါသည်)။</em>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gemini Burmese Composer Dock -->
+        <div class="gemini-composer-dock notranslate">
+          <div class="composer-top-bar notranslate">
+            <div class="char-buttons notranslate">
+              <span style="font-size: 11px; color: var(--text-muted); margin-right: 4px;">အက္ခရာများ:</span>
+              <button class="char-btn notranslate gemini-char-btn" data-char="ႂ">ႂ</button>
+              <button class="char-btn notranslate gemini-char-btn" data-char="ႃ">ႃ</button>
+              <button class="char-btn notranslate gemini-char-btn" data-char="ၠ">ၠ</button>
+              <button class="char-btn notranslate gemini-char-btn" data-char="ၡ">ၡ</button>
+              <button class="char-btn notranslate gemini-char-btn" data-char="ၢ">ၢ</button>
+              <button class="char-btn notranslate gemini-char-btn" data-char="ၣ">ၣ</button>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <select id="gemini-prompt-templates" class="templates-dropdown notranslate">
+                <option value="" selected>✨ နမူနာ မေးခွန်းများ (Templates)...</option>
+                <option value="အောက်ပါ ကုဒ်ကို မြန်မာလို အဆင့်ဆင့် ရှင်းပြပေးပါ:">📖 ကုဒ် ရှင်းပြခိုင်းရန်</option>
+                <option value="အောက်ပါ error ကို ဘာကြောင့်ဖြစ်တာလဲနှင့် ဖြေရှင်းနည်း ပြောပြပေးပါ:">🐛 Error ရှာဖွေ ပြင်ဆင်ရန်</option>
+                <option value="Python ဖြင့် Clean Architecture အတိုင်း ရေးသားထားသော ဥပမာတစ်ခု ရေးပေးပါ:">💻 ကုဒ်ရေးသားခိုင်းရန်</option>
+                <option value="အောက်ပါ စာသားကို သဘာဝကျသော မြန်မာစကားပြေဖြင့် ဘာသာပြန်ပေးပါ:">🌐 ဘာသာပြန်ခိုင်းရန်</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="composer-input-wrapper notranslate">
+            <textarea id="gemini-prompt-input" class="notranslate" rows="2" placeholder="Gemini ထံသို့ မြန်မာလို မေးလိုသည်ကို ရိုက်ထည့်ပါ... (Enter နှိပ်၍ ပေးပို့ပါ၊ Shift+Enter စာကြောင်းဆင်းပါ)"></textarea>
+          </div>
+
+          <div class="composer-bottom-bar notranslate" style="margin-top: 8px;">
+            <div class="bottom-left-tools notranslate">
+              <span id="gemini-char-counter">0 စာလုံး</span>
+              <span id="gemini-zawgyi-badge" class="tool-chip notranslate" style="display: none; background: #9e6a03; color: #fff; cursor: pointer;">⚠️ Zawgyi ဖြစ်နေသည် (နှိပ်၍ ပြင်ပါ)</span>
+            </div>
+            <div class="bottom-right-actions notranslate">
+              <button id="btn-gemini-clear-prompt" class="action-btn notranslate" title="ရိုက်ထားသော စာသား ရှင်းမည်">ရှင်းမည်</button>
+              <button id="btn-gemini-stop" class="action-btn notranslate" style="display: none; color: #f85149; border-color: rgba(248,81,73,0.3);">⏹️ ရပ်မည်</button>
+              <button id="btn-gemini-send" class="send-btn notranslate" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
+                <span>✨ မေးမည်</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
-
-  <!-- In-App Folder Browser Modal -->
-  <div id="modal-folder-browser" class="modal-overlay notranslate">
-    <div class="modal-box notranslate" style="max-width: 640px;">
-      <div class="modal-header notranslate">
-        <span>📂 Project Folder ရွေးချယ်ခြင်း</span>
-        <button class="close-btn" data-close="modal-folder-browser">&times;</button>
-      </div>
-      <div class="modal-body notranslate">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button id="btn-fb-up" class="action-btn notranslate" title="အထက်တစ်ဆင့်">⬆️ အထက်</button>
-          <button id="btn-fb-thispc" class="action-btn notranslate" title="Drive များ">💻 This PC</button>
-          <input type="text" id="fb-path" class="setting-input notranslate" style="flex:1;font-family:var(--font-mono);font-size:12px;" readonly>
-        </div>
-        <div id="fb-list" class="notranslate" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;border:1px solid var(--border-color);border-radius:8px;padding:6px;background:var(--bg-primary);"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <span id="fb-current" style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"></span>
-          <button id="btn-fb-select" class="action-btn btn-primary notranslate">✅ ဤ Folder ကို ရွေးမည်</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Folder Change Modal -->
   <div id="modal-folder" class="modal-overlay notranslate">
     <div class="modal-box notranslate">
@@ -468,6 +544,8 @@
         <h4 style="color:#58a6ff;margin:8px 0 4px;">🔟 Free Model များ (အခမဲ့)</h4>
         <p>နောက်ဆုံးစာရင်းကို Terminal တွင် <code>opencode models</code> ဖြင့် စစ်ဆေးပါ။ အသုံးများသော Free Model များ: <b>deepseek-v4.1-flash-free</b> (coding/debug), <b>nemotron-3.5-super-vl-free</b> (image/UI), <b>glm-5.3-flash-free</b> (အမြန် task), <b>minimax-m3.1-flash-free</b>။ ရွေးချယ်ရန် Tab 3 သို့မဟုတ် <code>opencode run -m &lt;model&gt;</code> သုံးပါ။</p>
         <p>🔄 Tab 3 ၏ Model စာရင်းကို OpenCode မှ <b>တိုက်ရိုက် (live)</b> ရယူပါသည် — Free Model အသစ် ထွက်လာသည်နှင့် စာရင်းထဲ အလိုအလျောက် ပါလာပါမည်။ Free များကို <b>🆓 Free Model များ</b> အုပ်စုတွင် ထိပ်မှ ပြပြီး <b>🔄 ပြန်ယူမည်</b> ခလုတ်ဖြင့် ချက်ချင်း ပြန်လည် ရယူနိုင်ပါသည်။</p>
+        <h4 style="color:#58a6ff;margin:8px 0 4px;">၁၁။ Google Gemini CLI &amp; Gemini AI စနစ်</h4>
+        <p>Google Gemini ကို ပုံစံနှစ်မျိုးဖြင့် သုံးနိုင်ပါသည်- (၁) Header ရှိ <b>✨ Gemini CLI</b> ခလုတ်ကို နှိပ်၍ Terminal ထဲတွင် သီးသန့် interactive REPL ဖြင့် အသုံးပြုခြင်း သို့မဟုတ် (၂) <b>✨ Gemini AI</b> Tab သို့ သွား၍ သီးသန့် Graphical Chat UI ဖြင့် မြန်မာလို မေးမြန်းခြင်း။ အသုံးပြုရန် <b>⚙️ ဖောင့်/အပြင်အဆင် &gt; Gemini API Key</b> တွင် မိမိ၏ Google AI Studio Key ထည့်သွင်းပေးပါ။</p>
       </div>
     </div>
   </div>
@@ -512,6 +590,59 @@
 
         <div style="display: flex; justify-content: flex-end;">
           <button class="action-btn notranslate" data-close="modal-account">ပိတ်မည်</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token Usage Modal -->
+  <div id="modal-usage" class="modal-overlay notranslate">
+    <div class="modal-box notranslate" style="max-width: 560px;">
+      <div class="modal-header notranslate">
+        <span>📊 Token အသုံးပြုမှု အခြေအနေ</span>
+        <button class="close-btn" data-close="modal-usage">&times;</button>
+      </div>
+      <div class="modal-body notranslate" style="line-height:1.6;">
+        <div id="usage-summary" style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">ရယူနေပါသည်...</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;padding:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">စုစုပေါင်း Token သုံးပြီး</div>
+            <div id="usage-total" style="font-size:20px;font-weight:700;color:#58a6ff;">—</div>
+          </div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;padding:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">ကုန်ကျစရိတ် (USD)</div>
+            <div id="usage-cost" style="font-size:20px;font-weight:700;color:#3fb950;">—</div>
+          </div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;padding:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">Input Token</div>
+            <div id="usage-input" style="font-size:16px;font-weight:600;">—</div>
+          </div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;padding:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">Output Token</div>
+            <div id="usage-output" style="font-size:16px;font-weight:600;">—</div>
+          </div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;padding:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">Reasoning Token</div>
+            <div id="usage-reasoning" style="font-size:16px;font-weight:600;">—</div>
+          </div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;padding:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">Cache Read Token</div>
+            <div id="usage-cache" style="font-size:16px;font-weight:600;">—</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+          Sessions: <span id="usage-sessions">—</span> · Prompts: <span id="usage-prompts">—</span> · Steps: <span id="usage-steps">—</span>
+        </div>
+        <div style="background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);border-radius:6px;padding:10px;font-size:12px;color:#58a6ff;margin-bottom:8px;line-height:1.6;">
+          ℹ️ <strong>စက်တွင်း (Local PC) မှတ်တမ်းဖြစ်ပါသည်:</strong> ဤစာရင်းသည် ဤကွန်ပျူတာပေါ်တွင် အသုံးပြုခဲ့သမျှ Local Session စုစုပေါင်း မှတ်တမ်းဖြစ်ပြီး OpenCode Account ၏ လက်ကျန် Quota မဟုတ်ပါ။ ထို့ကြောင့် အကောင့်ပြောင်းသော်လည်း ဤသမိုင်းမှတ်တမ်းသည် ပြောင်းလဲမည် မဟုတ်ပါ။
+        </div>
+        <div style="background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.3);border-radius:6px;padding:10px;font-size:12px;color:#d29922;margin-bottom:10px;line-height:1.6;">
+          ⚠️ Free-tier ကျန်ရှိသော ပမာဏ (Remaining) နှင့် Reset အချိန်ကို OpenCode ဘက်မှ API ဖြင့် မထုတ်ပေးပါ။ ကျန်ရှိသော ပမာဏကို OpenCode Console (https://opencode.ai/console) တွင် ကြည့်ရှုနိုင်ပါသည်။
+        </div>
+        <div id="usage-models" style="max-height:180px;overflow-y:auto;font-size:12px;"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+          <button id="btn-usage-refresh" class="action-btn notranslate">🔄 ပြန်လည်ရယူမည်</button>
+          <button class="action-btn notranslate" data-close="modal-usage">ပိတ်မည်</button>
         </div>
       </div>
     </div>
