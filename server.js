@@ -958,6 +958,33 @@ app.get('/api/gemini/status', (req, res) => {
   });
 });
 
+function getWorkspaceFileList(workspaceDir) {
+  const fileList = [];
+  const MAX_FILES = 80;
+
+  function walk(currentDir, relativePrefix) {
+    if (fileList.length >= MAX_FILES) return;
+    try {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      for (const ent of entries) {
+        if (fileList.length >= MAX_FILES) break;
+        if (ent.name.startsWith('.') || ent.name === 'node_modules' || ent.name === 'dist' || ent.name === 'build' || ent.name === '__pycache__' || ent.name === 'venv' || ent.name === '.venv') {
+          continue;
+        }
+        const relPath = relativePrefix ? path.join(relativePrefix, ent.name) : ent.name;
+        if (ent.isDirectory()) {
+          walk(path.join(currentDir, ent.name), relPath);
+        } else if (ent.isFile()) {
+          fileList.push(relPath);
+        }
+      }
+    } catch (e) {}
+  }
+
+  walk(workspaceDir, '');
+  return fileList;
+}
+
 // API: Direct Gemini AI Runner & Chat (Streams response)
 app.post('/api/gemini/run', async (req, res) => {
   const { prompt, model = 'gemini-2.5-flash', history = [], files = [] } = req.body || {};
@@ -1008,10 +1035,24 @@ app.post('/api/gemini/run', async (req, res) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(targetModel)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
   try {
+    const projectFiles = getWorkspaceFileList(currentCwd);
+    const systemInstruction = {
+      parts: [{
+        text: `You are Myanmar Gemini AI, an intelligent coding and developer assistant running directly inside Myanmar OpenCode Terminal.\n` +
+              `Current Workspace Directory (လက်ရှိ ပရောဂျက် ဖိုဒါ): ${currentCwd}\n` +
+              `Project Files (လက်ရှိ ပရောဂျက် ဖိုင်များ):\n${projectFiles.length ? projectFiles.map(f => '  • ' + f).join('\n') : '  (ဖိုင် မရှိပါ သို့မဟုတ် ဖတ်မရပါ)'}\n\n` +
+              `IMPORTANT INSTRUCTIONS:\n` +
+              `1. You are fully aware of this current project directory and all the files listed above.\n` +
+              `2. When the user asks about "လက်ရှိဖိုင်", "လက်ရှိ ပရောဂျက်", "project files", or asks what project/files you are in, answer directly based on this project context.\n` +
+              `3. Reply politely and helpfully in standard Myanmar Unicode (Pyidaungsu ordering) or English when appropriate.`
+      }]
+    };
+
     const upstreamRes = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        systemInstruction,
         contents,
         generationConfig: {
           temperature: 0.7
