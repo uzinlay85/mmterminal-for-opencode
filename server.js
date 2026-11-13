@@ -35,7 +35,7 @@ const PORT = process.env.PORT || 3820;
 // its own expectation so a long-running (stale) server is detected instead of
 // failing with a confusing "not valid JSON" error. scripts/ensure_server.ps1
 // parses this same line to decide whether a running server needs a restart.
-const API_VERSION = 13;
+const API_VERSION = 14;
 
 let currentCwd = process.cwd();
 
@@ -864,10 +864,12 @@ app.post('/api/opencode/run', (req, res) => {
     res.end();
   });
 
-  req.on('close', () => {
-    try {
-      runner.kill();
-    } catch (e) {}
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      try {
+        runner.kill();
+      } catch (e) {}
+    }
   });
 });
 
@@ -995,8 +997,10 @@ app.post('/api/gemini/run', async (req, res) => {
   });
 
   const abortController = new AbortController();
-  req.on('close', () => {
-    abortController.abort();
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+    }
   });
 
   const targetModel = /^[\w.-]+$/.test(model) ? model : 'gemini-2.5-flash';
